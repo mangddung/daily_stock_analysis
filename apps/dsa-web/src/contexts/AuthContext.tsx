@@ -2,6 +2,7 @@ import type React from 'react';
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { createParsedApiError, getParsedApiError, type ParsedApiError } from '../api/error';
 import { authApi } from '../api/auth';
+import { errorText } from '../locales/errors';
 import { useStockPoolStore } from '../stores';
 
 type AuthContextValue = {
@@ -28,8 +29,8 @@ function extractLoginError(err: unknown): ParsedApiError {
   const parsed = getParsedApiError(err);
   if (parsed.status === 429) {
     return createParsedApiError({
-      title: '登录尝试过于频繁',
-      message: '尝试次数过多，请稍后再试。',
+      title: errorText('loginRateLimitedTitle'),
+      message: errorText('loginRateLimitedMessage'),
       rawMessage: parsed.rawMessage,
       status: parsed.status,
       category: parsed.category,
