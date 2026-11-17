@@ -27,6 +27,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Union, Dict, Any
 
+from src.ui_language import ui_text
 from fastapi import APIRouter, HTTPException, Depends, Query, Body
 from fastapi.responses import JSONResponse, StreamingResponse
 
@@ -240,7 +241,7 @@ def _extract_guardrail_reason(raw_result: Any) -> Optional[str]:
 
 
 def _invalid_analysis_input_error() -> HTTPException:
-    return api_error(400, "validation_error", "请输入有效的股票代码或股票名称")
+    return api_error(400, "validation_error", ui_text("请输入有效的股票代码或股票名称", "Enter a valid stock code or stock name"))
 
 
 def _is_obviously_invalid_analysis_input(text: str) -> bool:
@@ -377,7 +378,7 @@ def trigger_analysis(
         stock_codes.extend(request.stock_codes)
 
     if not stock_codes:
-        raise api_error(400, "validation_error", "必须提供 stock_code 或 stock_codes 参数")
+        raise api_error(400, "validation_error", ui_text("必须提供 stock_code 或 stock_codes 参数", "stock_code or stock_codes is required"))
 
     # Limit the number of non-blank raw tokens BEFORE resolution. Rejected and
     # duplicate tokens must also count toward the cap, otherwise a request that
@@ -386,7 +387,7 @@ def trigger_analysis(
     MAX_BATCH_SIZE = 50
     non_empty_raw_tokens = [c for c in stock_codes if str(c or "").strip()]
     if len(non_empty_raw_tokens) > MAX_BATCH_SIZE:
-        raise api_error(400, "validation_error", f"单次分析请求最多支持 {MAX_BATCH_SIZE} 只股票")
+        raise api_error(400, "validation_error", ui_text(f"单次分析请求最多支持 {MAX_BATCH_SIZE} 只股票", f"A single analysis request supports at most {MAX_BATCH_SIZE} stocks"))
 
     # Normalize and de-duplicate inputs while preserving compatibility.
     # Code-like tokens go through parse_analysis_target (the single asset-type
@@ -423,11 +424,11 @@ def trigger_analysis(
 
     if not stock_codes:
         if not rejected_entries:
-            raise api_error(400, "validation_error", "股票代码不能为空或仅包含空白字符")
+            raise api_error(400, "validation_error", ui_text("股票代码不能为空或仅包含空白字符", "Stock code must not be empty or whitespace only"))
         # 全部目标都被拒绝（单请求或批量全拒）：无任务被接受时返回 202 会误导
         # 客户端，一律明确 400；部分被拒则走下方 rejected 语义。
         code, target = rejected_entries[0]
-        reason = target.unsupported_reason or f"不支持的目标: {code}"
+        reason = target.unsupported_reason or ui_text(f"不支持的目标: {code}", f"Unsupported target: {code}")
         raise api_error(400, "validation_error", reason)
 
     # Sync mode only supports single-stock analysis.
@@ -436,13 +437,13 @@ def trigger_analysis(
             raise api_error(
                 400,
                 "validation_error",
-                "同步模式仅支持单只股票分析，请使用 async_mode=true 进行批量分析",
+                ui_text("同步模式仅支持单只股票分析，请使用 async_mode=true 进行批量分析", "Sync mode supports single-stock analysis only. Use async_mode=true for batch analysis"),
             )
         if rejected_entries:
             # 同步模式不支持 rejected 语义：只要存在被拒绝目标（含全部被拒绝）
             # 就以第一个未登记目标的明确校验错误返回 4xx。
             code, target = rejected_entries[0]
-            reason = target.unsupported_reason or f"不支持的目标: {code}"
+            reason = target.unsupported_reason or ui_text(f"不支持的目标: {code}", f"Unsupported target: {code}")
             raise api_error(400, "validation_error", reason)
         return _handle_sync_analysis(stock_codes[0], request, analysis_target=unique_targets[0] if unique_targets else None)
 
@@ -514,7 +515,7 @@ def _handle_async_analysis_batch(
             trace_id=_get_task_trace_id(task),
             stock_code=task.stock_code,
             status="pending",
-            message=f"分析任务已加入队列: {task.stock_code}",
+            message=ui_text(f"分析任务已加入队列: {task.stock_code}", f"Analysis task queued: {task.stock_code}"),
             analysis_phase=task.analysis_phase,
             asset_type=_task_asset_type(task),
         )
@@ -531,7 +532,7 @@ def _handle_async_analysis_batch(
     rejected = [
         RejectedTaskItem(
             stock_code=code,
-            message=(target.unsupported_reason or f"不支持的目标: {code}"),
+            message=(target.unsupported_reason or ui_text(f"不支持的目标: {code}", f"Unsupported target: {code}")),
         )
         for code, target in (rejected_entries or [])
     ]
@@ -567,9 +568,9 @@ def _handle_async_analysis_batch(
     # 批量：返回汇总结果（rejected 仅 async 批量返回）
     rejected_count = len(rejected)
     if rejected_count:
-        message = f"已提交 {len(accepted)} 个任务，{len(duplicates)} 个重复跳过，{rejected_count} 个被拒绝"
+        message = ui_text(f"已提交 {len(accepted)} 个任务，{len(duplicates)} 个重复跳过，{rejected_count} 个被拒绝", f"Submitted {len(accepted)} tasks, {len(duplicates)} duplicates skipped, {rejected_count} rejected")
     else:
-        message = f"已提交 {len(accepted)} 个任务，{len(duplicates)} 个重复跳过"
+        message = ui_text(f"已提交 {len(accepted)} 个任务，{len(duplicates)} 个重复跳过", f"Submitted {len(accepted)} tasks, {len(duplicates)} duplicates skipped")
     batch_response = BatchTaskAcceptedResponse(
         accepted=accepted,
         duplicates=duplicates,
@@ -612,7 +613,7 @@ def _handle_sync_analysis(
         )
 
         if result is None:
-            error_message = service.last_error or f"分析股票 {stock_code} 失败"
+            error_message = service.last_error or ui_text(f"分析股票 {stock_code} 失败", f"Analysis of stock {stock_code} failed")
             raise api_error(500, "analysis_failed", error_message)
 
         # 构建报告结构
@@ -645,7 +646,7 @@ def _handle_sync_analysis(
         raise
     except Exception as e:
         logger.error(f"分析失败: {e}", exc_info=True)
-        raise api_error(500, "internal_error", f"分析过程发生错误: {str(e)}")
+        raise api_error(500, "internal_error", ui_text(f"分析过程发生错误: {str(e)}", f"Error during analysis: {str(e)}"))
 
 
 # ============================================================
@@ -678,7 +679,7 @@ def trigger_market_review(
 
     lock_token = _try_acquire_market_review_lock(runtime_config)
     if lock_token is None:
-        raise api_error(409, "duplicate_market_review", "大盘复盘正在执行中，请稍后再试")
+        raise api_error(409, "duplicate_market_review", ui_text("大盘复盘正在执行中，请稍后再试", "Market review is already running. Try again later"))
 
     try:
         task_id = uuid.uuid4().hex
@@ -699,7 +700,7 @@ def trigger_market_review(
             ),
             stock_code="market_review",
             stock_name="大盘复盘",
-            message="大盘复盘任务已提交",
+            message=ui_text("大盘复盘任务已提交", "Market review task submitted"),
             task_id=task_id,
             region=effective_region,
         )
@@ -709,7 +710,7 @@ def trigger_market_review(
 
     return MarketReviewAccepted(
         status="accepted",
-        message="大盘复盘任务已提交，完成后会保存报告并按配置推送通知",
+        message=ui_text("大盘复盘任务已提交，完成后会保存报告并按配置推送通知", "Market review task submitted. The report will be saved and notifications sent as configured when it completes"),
         send_notification=request.send_notification,
         region=effective_region,
         task_id=task.task_id,
@@ -951,9 +952,9 @@ def get_task_run_flow(task_id: str) -> RunFlowSnapshot:
             return history_snapshot
     except Exception as e:
         logger.error(f"查询任务运行流失败: {e}", exc_info=True)
-        raise api_error(500, "internal_error", f"查询任务运行流失败: {str(e)}")
+        raise api_error(500, "internal_error", ui_text(f"查询任务运行流失败: {str(e)}", f"Failed to query task run flow: {str(e)}"))
 
-    raise api_error(404, "not_found", f"任务 {task_id} 不存在或已过期")
+    raise api_error(404, "not_found", ui_text(f"任务 {task_id} 不存在或已过期", f"Task {task_id} does not exist or has expired"))
 
 
 def _safe_task_flow_text(value: Any, *, max_length: int) -> Optional[str]:
@@ -1410,10 +1411,10 @@ def get_analysis_status(task_id: str) -> TaskStatus:
 
     except Exception as e:
         logger.error(f"查询任务状态失败: {e}", exc_info=True)
-        raise api_error(500, "internal_error", f"查询任务状态失败: {str(e)}")
+        raise api_error(500, "internal_error", ui_text(f"查询任务状态失败: {str(e)}", f"Failed to query task status: {str(e)}"))
 
     # 3. 任务不存在
-    raise api_error(404, "not_found", f"任务 {task_id} 不存在或已过期")
+    raise api_error(404, "not_found", ui_text(f"任务 {task_id} 不存在或已过期", f"Task {task_id} does not exist or has expired"))
 
 
 # ============================================================

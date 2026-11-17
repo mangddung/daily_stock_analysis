@@ -6,6 +6,7 @@ from __future__ import annotations
 import logging
 import os
 
+from src.ui_language import ui_text
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
@@ -222,25 +223,25 @@ async def auth_update_settings(request: Request, body: AuthSettingsRequest):
                     status_code=400,
                     content={
                         "error": "password_already_set",
-                        "message": "已存在管理员密码，请启用认证后通过修改密码功能更新",
+                        "message": ui_text("已存在管理员密码，请启用认证后通过修改密码功能更新", "An admin password already exists. Enable authentication and use change password to update it"),
                     },
                 )
             if not password:
                 return JSONResponse(
                     status_code=400,
-                    content={"error": "password_required", "message": "请输入要设置的管理员密码"},
+                    content={"error": "password_required", "message": ui_text("请输入要设置的管理员密码", "Enter the admin password to set")},
                 )
             if password != confirm:
                 return JSONResponse(
                     status_code=400,
-                    content={"error": "password_mismatch", "message": "两次输入的密码不一致"},
+                    content={"error": "password_mismatch", "message": ui_text("两次输入的密码不一致", "The two passwords do not match")},
                 )
             if has_stored_password():
                 return JSONResponse(
                     status_code=400,
                     content={
                         "error": "password_already_set",
-                        "message": "已存在管理员密码，请启用认证后通过修改密码功能更新",
+                        "message": ui_text("已存在管理员密码，请启用认证后通过修改密码功能更新", "An admin password already exists. Enable authentication and use change password to update it"),
                     },
                 )
             err = set_initial_password(password)
@@ -252,7 +253,7 @@ async def auth_update_settings(request: Request, body: AuthSettingsRequest):
         elif not stored_password_exists:
             return JSONResponse(
                 status_code=400,
-                content={"error": "password_required", "message": "开启密码登录前请先设置密码"},
+                content={"error": "password_required", "message": ui_text("开启密码登录前请先设置密码", "Set a password before enabling password login")},
             )
         else:
             # P1 Vulnerability Fix: Enforce current-password check independent of global cached flag
@@ -267,7 +268,7 @@ async def auth_update_settings(request: Request, body: AuthSettingsRequest):
                 if not current_password:
                     return JSONResponse(
                         status_code=400,
-                        content={"error": "current_required", "message": "重新开启认证前请输入当前密码"},
+                        content={"error": "current_required", "message": ui_text("重新开启认证前请输入当前密码", "Enter the current password before re-enabling authentication")},
                     )
                 ip = get_client_ip(request)
                 if not check_rate_limit(ip):
@@ -282,7 +283,7 @@ async def auth_update_settings(request: Request, body: AuthSettingsRequest):
                     record_login_failure(ip)
                     return JSONResponse(
                         status_code=401,
-                        content={"error": "invalid_password", "message": "当前密码错误"},
+                        content={"error": "invalid_password", "message": ui_text("当前密码错误", "Current password is incorrect")},
                     )
                 clear_rate_limit(ip)
     else:
@@ -295,7 +296,7 @@ async def auth_update_settings(request: Request, body: AuthSettingsRequest):
             if not current_password:
                 return JSONResponse(
                     status_code=400,
-                    content={"error": "current_required", "message": "关闭认证前请输入当前密码"},
+                    content={"error": "current_required", "message": ui_text("关闭认证前请输入当前密码", "Enter the current password before disabling authentication")},
                 )
             ip = get_client_ip(request)
             if not check_rate_limit(ip):
@@ -310,7 +311,7 @@ async def auth_update_settings(request: Request, body: AuthSettingsRequest):
                 record_login_failure(ip)
                 return JSONResponse(
                     status_code=401,
-                    content={"error": "invalid_password", "message": "当前密码错误"},
+                    content={"error": "invalid_password", "message": ui_text("当前密码错误", "Current password is incorrect")},
                 )
             clear_rate_limit(ip)
 
@@ -376,7 +377,7 @@ async def auth_login(request: Request, body: LoginRequest):
     if not password:
         return JSONResponse(
             status_code=400,
-            content={"error": "password_required", "message": "请输入密码"},
+            content={"error": "password_required", "message": ui_text("请输入密码", "Enter a password")},
         )
 
     ip = get_client_ip(request)
@@ -412,7 +413,7 @@ async def auth_login(request: Request, body: LoginRequest):
             record_login_failure(ip)
             return JSONResponse(
                 status_code=401,
-                content={"error": "invalid_password", "message": "密码错误"},
+                content={"error": "invalid_password", "message": ui_text("密码错误", "Incorrect password")},
             )
 
     clear_rate_limit(ip)
@@ -448,12 +449,12 @@ async def auth_change_password(body: ChangePasswordRequest):
     if not current:
         return JSONResponse(
             status_code=400,
-            content={"error": "current_required", "message": "请输入当前密码"},
+            content={"error": "current_required", "message": ui_text("请输入当前密码", "Enter the current password")},
         )
     if new_pwd != new_confirm:
         return JSONResponse(
             status_code=400,
-            content={"error": "password_mismatch", "message": "两次输入的新密码不一致"},
+            content={"error": "password_mismatch", "message": ui_text("两次输入的新密码不一致", "The two new passwords do not match")},
         )
 
     err = change_password(current, new_pwd)

@@ -7,6 +7,7 @@ import logging
 from datetime import date
 from typing import Literal, Optional
 
+from src.ui_language import ui_text
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from api.deps import get_database_manager
@@ -81,7 +82,7 @@ def run_backtest(
         logger.error(f"回测执行失败: {exc}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail={"error": "internal_error", "message": f"回测执行失败: {str(exc)}"},
+            detail={"error": "internal_error", "message": ui_text(f"回测执行失败: {str(exc)}", f"Backtest failed: {str(exc)}")},
         )
 
 
@@ -136,7 +137,7 @@ def get_backtest_results(
         logger.error(f"查询回测结果失败: {exc}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail={"error": "internal_error", "message": f"查询回测结果失败: {str(exc)}"},
+            detail={"error": "internal_error", "message": ui_text(f"查询回测结果失败: {str(exc)}", f"Failed to query backtest results: {str(exc)}")},
         )
 
 
@@ -172,7 +173,7 @@ def get_overall_performance(
         if summary is None:
             raise HTTPException(
                 status_code=404,
-                detail={"error": "not_found", "message": "未找到整体回测汇总"},
+                detail={"error": "not_found", "message": ui_text("未找到整体回测汇总", "Overall backtest summary not found")},
             )
         return PerformanceMetrics(**summary)
     except ValueError as exc:
@@ -186,7 +187,7 @@ def get_overall_performance(
         logger.error(f"查询整体表现失败: {exc}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail={"error": "internal_error", "message": f"查询整体表现失败: {str(exc)}"},
+            detail={"error": "internal_error", "message": ui_text(f"查询整体表现失败: {str(exc)}", f"Failed to query overall performance: {str(exc)}")},
         )
 
 
@@ -223,7 +224,7 @@ def get_stock_performance(
         if summary is None:
             raise HTTPException(
                 status_code=404,
-                detail={"error": "not_found", "message": f"未找到 {code} 的回测汇总"},
+                detail={"error": "not_found", "message": ui_text(f"未找到 {code} 的回测汇总", f"Backtest summary not found for {code}")},
             )
         return PerformanceMetrics(**summary)
     except ValueError as exc:
@@ -237,5 +238,5 @@ def get_stock_performance(
         logger.error(f"查询单股表现失败: {exc}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail={"error": "internal_error", "message": f"查询单股表现失败: {str(exc)}"},
+            detail={"error": "internal_error", "message": ui_text(f"查询单股表现失败: {str(exc)}", f"Failed to query per-stock performance: {str(exc)}")},
         )

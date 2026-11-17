@@ -12,6 +12,7 @@
 import logging
 from typing import Any, Mapping, Optional
 
+from src.ui_language import ui_text
 from fastapi import APIRouter, HTTPException, Query, Depends, Body
 from fastapi.responses import HTMLResponse, Response
 
@@ -99,7 +100,7 @@ def _history_share_image_input(
             status_code=404,
             detail={
                 "error": "not_found",
-                "message": f"未找到 id/query_id={record_id} 的分析记录",
+                "message": ui_text(f"未找到 id/query_id={record_id} 的分析记录", f"Analysis record not found for id/query_id={record_id}"),
             },
         )
 
@@ -111,7 +112,7 @@ def _history_share_image_input(
             status_code=500,
             detail={
                 "error": "generation_failed",
-                "message": f"生成分享图片所需报告失败: {exc.message}",
+                "message": ui_text(f"生成分享图片所需报告失败: {exc.message}", f"Failed to build the report for the share image: {exc.message}"),
             },
         ) from exc
 
@@ -120,7 +121,7 @@ def _history_share_image_input(
             status_code=404,
             detail={
                 "error": "not_found",
-                "message": f"未找到 id/query_id={record_id} 的报告内容",
+                "message": ui_text(f"未找到 id/query_id={record_id} 的报告内容", f"Report content not found for id/query_id={record_id}"),
             },
         )
     return result, markdown_content
@@ -309,7 +310,7 @@ def get_history_list(
             status_code=500,
             detail={
                 "error": "internal_error",
-                "message": f"查询历史列表失败: {str(e)}"
+                "message": ui_text(f"查询历史列表失败: {str(e)}", f"Failed to query history list: {str(e)}")
             }
         )
 
@@ -335,7 +336,7 @@ def delete_history_by_code(
         if not candidates:
             raise HTTPException(
                 status_code=400,
-                detail={"error": "invalid_request", "message": "stock_code 不能为空"},
+                detail={"error": "invalid_request", "message": ui_text("stock_code 不能为空", "stock_code must not be empty")},
             )
 
         deleted = 0
@@ -363,7 +364,7 @@ def delete_history_by_code(
         logger.error(f"按股票代码删除历史记录失败: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail={"error": "internal_error", "message": f"删除失败: {str(e)}"},
+            detail={"error": "internal_error", "message": ui_text(f"删除失败: {str(e)}", f"Delete failed: {str(e)}")},
         )
 
 
@@ -391,7 +392,7 @@ def delete_history_records(
             status_code=400,
             detail={
                 "error": "invalid_request",
-                "message": "record_ids 不能为空"
+                "message": ui_text("record_ids 不能为空", "record_ids must not be empty")
             }
         )
 
@@ -407,7 +408,7 @@ def delete_history_records(
             status_code=500,
             detail={
                 "error": "internal_error",
-                "message": f"删除历史记录失败: {str(e)}"
+                "message": ui_text(f"删除历史记录失败: {str(e)}", f"Failed to delete history records: {str(e)}")
             }
         )
 
@@ -513,7 +514,7 @@ def get_stock_bar(
             status_code=500,
             detail={
                 "error": "internal_error",
-                "message": f"查询个股栏失败: {str(e)}",
+                "message": ui_text(f"查询个股栏失败: {str(e)}", f"Failed to query stock column: {str(e)}"),
             },
         )
 
@@ -560,7 +561,7 @@ def get_history_detail(
                 status_code=404,
                 detail={
                     "error": "not_found",
-                    "message": f"未找到 id/query_id={record_id} 的分析记录"
+                    "message": ui_text(f"未找到 id/query_id={record_id} 的分析记录", f"Analysis record not found for id/query_id={record_id}")
                 }
             )
         
@@ -686,7 +687,7 @@ def get_history_detail(
             status_code=500,
             detail={
                 "error": "internal_error",
-                "message": f"查询历史详情失败: {str(e)}"
+                "message": ui_text(f"查询历史详情失败: {str(e)}", f"Failed to query history detail: {str(e)}")
             }
         )
 
@@ -717,7 +718,7 @@ def get_history_diagnostics(
                 status_code=404,
                 detail={
                     "error": "not_found",
-                    "message": f"未找到 id/query_id={record_id} 的分析记录",
+                    "message": ui_text(f"未找到 id/query_id={record_id} 的分析记录", f"Analysis record not found for id/query_id={record_id}"),
                 },
             )
         return RunDiagnosticSummaryResponse.model_validate(summary)
@@ -729,7 +730,7 @@ def get_history_diagnostics(
             status_code=500,
             detail={
                 "error": "internal_error",
-                "message": f"查询运行诊断摘要失败: {str(e)}",
+                "message": ui_text(f"查询运行诊断摘要失败: {str(e)}", f"Failed to query run diagnostics summary: {str(e)}"),
             },
         )
 
@@ -760,7 +761,7 @@ def get_history_run_flow(
                 status_code=404,
                 detail={
                     "error": "not_found",
-                    "message": f"未找到 id/query_id={record_id} 的分析记录",
+                    "message": ui_text(f"未找到 id/query_id={record_id} 的分析记录", f"Analysis record not found for id/query_id={record_id}"),
                 },
             )
         return snapshot
@@ -772,7 +773,7 @@ def get_history_run_flow(
             status_code=500,
             detail={
                 "error": "internal_error",
-                "message": f"查询运行流快照失败: {str(e)}",
+                "message": ui_text(f"查询运行流快照失败: {str(e)}", f"Failed to query run flow snapshot: {str(e)}"),
             },
         )
 
@@ -830,7 +831,7 @@ def get_history_news(
             status_code=500,
             detail={
                 "error": "internal_error",
-                "message": f"查询新闻情报失败: {str(e)}"
+                "message": ui_text(f"查询新闻情报失败: {str(e)}", f"Failed to query news intelligence: {str(e)}")
             }
         )
 
@@ -859,7 +860,7 @@ def get_history_share_image_html(
             status_code=413,
             detail={
                 "error": "share_image_too_large",
-                "message": f"报告内容超过分享图片上限 {max_chars} 字符",
+                "message": ui_text(f"报告内容超过分享图片上限 {max_chars} 字符", f"Report content exceeds the share image limit of {max_chars} characters"),
             },
         )
 
@@ -875,7 +876,7 @@ def get_history_share_image_html(
             status_code=500,
             detail={
                 "error": "generation_failed",
-                "message": "生成桌面分享图片内容失败",
+                "message": ui_text("生成桌面分享图片内容失败", "Failed to generate desktop share image content"),
             },
         ) from exc
 
@@ -919,7 +920,7 @@ def get_history_share_image(
             status_code=503,
             detail={
                 "error": "share_image_unavailable",
-                "message": f"分享图片生成失败，请检查 {engine} 转图工具是否已安装并可用",
+                "message": ui_text(f"分享图片生成失败，请检查 {engine} 转图工具是否已安装并可用", f"Share image generation failed. Check that the {engine} image converter is installed and available"),
             },
         )
 
@@ -976,7 +977,7 @@ def get_history_markdown(
             status_code=500,
             detail={
                 "error": "generation_failed",
-                "message": f"生成 Markdown 报告失败: {e.message}"
+                "message": ui_text(f"生成 Markdown 报告失败: {e.message}", f"Failed to generate Markdown report: {e.message}")
             }
         )
     except Exception as e:
@@ -985,7 +986,7 @@ def get_history_markdown(
             status_code=500,
             detail={
                 "error": "internal_error",
-                "message": f"获取 Markdown 报告失败: {str(e)}"
+                "message": ui_text(f"获取 Markdown 报告失败: {str(e)}", f"Failed to fetch Markdown report: {str(e)}")
             }
         )
 
@@ -994,7 +995,7 @@ def get_history_markdown(
             status_code=404,
             detail={
                 "error": "not_found",
-                "message": f"未找到 id/query_id={record_id} 的分析记录"
+                "message": ui_text(f"未找到 id/query_id={record_id} 的分析记录", f"Analysis record not found for id/query_id={record_id}")
             }
         )
 

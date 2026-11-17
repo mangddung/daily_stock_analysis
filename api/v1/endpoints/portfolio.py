@@ -7,6 +7,7 @@ import logging
 from datetime import date
 from typing import Optional
 
+from src.ui_language import ui_text
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse
 
@@ -486,7 +487,7 @@ def analyze_position(symbol: str, request: PortfolioPositionAnalysisRequest) -> 
         task_id=task.task_id,
         trace_id=task.trace_id or task.task_id,
         status="pending",
-        message=f"分析任务已加入队列: {task.stock_code}",
+        message=ui_text(f"分析任务已加入队列: {task.stock_code}", f"Analysis task queued: {task.stock_code}"),
         analysis_phase=task.analysis_phase,
     )
     return response
