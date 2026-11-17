@@ -92,6 +92,7 @@ from src.notification_sender.gotify_sender import resolve_gotify_message_endpoin
 from src.notification_sender.ntfy_sender import resolve_ntfy_endpoint
 from src.services.stock_list_parser import split_stock_list
 from src.services.setup_status_i18n import localize_setup_status
+from src.ui_language import ui_text
 from src.services.generation_backend_status_service import GenerationBackendStatusService
 from src.services.agent_backend_status_service import AgentBackendStatusService
 
@@ -549,7 +550,10 @@ class SystemConfigService:
         if missing:
             return self._build_notification_test_result(
                 success=False,
-                message=f"通知渠道配置不完整，缺少: {', '.join(missing)}",
+                message=ui_text(
+                    f"通知渠道配置不完整，缺少: {', '.join(missing)}",
+                    f"Notification channel configuration is incomplete. Missing: {', '.join(missing)}",
+                ),
                 error_code="config_missing",
                 stage="config_validation",
                 retryable=False,
@@ -586,7 +590,7 @@ class SystemConfigService:
             error_code, retryable = self._classify_notification_exception(exc)
             return self._build_notification_test_result(
                 success=False,
-                message=f"通知测试异常: {exc}",
+                message=ui_text(f"通知测试异常: {exc}", f"Notification test error: {exc}"),
                 error_code=error_code,
                 stage="notification_send",
                 retryable=retryable,
@@ -2190,8 +2194,8 @@ class SystemConfigService:
             )
             warnings.append(
                 (
-                    "新闻窗口已按策略计算："
-                    f"NEWS_STRATEGY_PROFILE={profile}, "
+                    ui_text("新闻窗口已按策略计算：", "News window computed from strategy: ")
+                    + f"NEWS_STRATEGY_PROFILE={profile}, "
                     f"NEWS_MAX_AGE_DAYS={max_age}, "
                     f"effective_days={effective_days} "
                     "(effective_days=min(profile_days, NEWS_MAX_AGE_DAYS))."
@@ -2205,16 +2209,20 @@ class SystemConfigService:
                 max_workers = 3
             if reload_now:
                 warnings.append(
-                    (
+                    ui_text(
                         f"MAX_WORKERS={max_workers} 已保存。任务队列空闲时会自动应用；"
-                        "若当前存在运行中任务，将在队列空闲后生效。"
+                        "若当前存在运行中任务，将在队列空闲后生效。",
+                        f"MAX_WORKERS={max_workers} saved. It is applied automatically once the task queue is idle; "
+                        "if tasks are currently running, it takes effect after the queue becomes idle.",
                     )
                 )
             else:
                 warnings.append(
-                    (
+                    ui_text(
                         f"MAX_WORKERS={max_workers} 已写入 .env，但本次未触发运行时重载"
-                        "（reload_now=false）；重载后才会应用。"
+                        "（reload_now=false）；重载后才会应用。",
+                        f"MAX_WORKERS={max_workers} was written to .env, but no runtime reload was triggered "
+                        "(reload_now=false); it applies after a reload.",
                     )
                 )
 
@@ -2223,10 +2231,14 @@ class SystemConfigService:
         }
         if startup_only_run_keys:
             warnings.append(
-                (
+                ui_text(
                     f"{', '.join(sorted(startup_only_run_keys))} 已写入 .env。"
                     "它属于启动期单次运行配置：当前已运行的 WebUI/API 进程不会因为本次保存立即触发分析；"
-                    "请重启当前进程后，在非 schedule 模式下按新值生效。"
+                    "请重启当前进程后，在非 schedule 模式下按新值生效。",
+                    f"{', '.join(sorted(startup_only_run_keys))} written to .env. "
+                    "This is a startup-time one-shot run setting: the running WebUI/API process will not "
+                    "start an analysis because of this save; restart the process and run in non-schedule mode "
+                    "for the new value to take effect.",
                 )
             )
 
@@ -2235,20 +2247,28 @@ class SystemConfigService:
         }
         if startup_only_schedule_keys:
             warnings.append(
-                (
+                ui_text(
                     f"{', '.join(sorted(startup_only_schedule_keys))} 已写入 .env。"
                     "这些属于启动期调度模式配置：当前已运行的 WebUI/API 进程不会因为本次保存启动、"
-                    "停止或重建 scheduler；请重启当前进程，并以 schedule 模式重新启动后生效。"
+                    "停止或重建 scheduler；请重启当前进程，并以 schedule 模式重新启动后生效。",
+                    f"{', '.join(sorted(startup_only_schedule_keys))} written to .env. "
+                    "These are startup-time schedule-mode settings: the running WebUI/API process will not "
+                    "start, stop or rebuild the scheduler because of this save; restart the process in "
+                    "schedule mode for them to take effect.",
                 )
             )
 
         if "SCHEDULE_ENABLED" in submitted_keys:
             schedule_enabled = (current_map.get("SCHEDULE_ENABLED", "false") or "false").strip().lower()
             warnings.append(
-                (
+                ui_text(
                     f"SCHEDULE_ENABLED={schedule_enabled} 已写入 .env。"
                     "如果当前进程是 WebUI/API/Desktop 长运行进程，runtime scheduler 会按新配置启停；"
-                    "CLI schedule 模式仍按启动参数和配置运行。"
+                    "CLI schedule 模式仍按启动参数和配置运行。",
+                    f"SCHEDULE_ENABLED={schedule_enabled} written to .env. "
+                    "If the current process is a long-running WebUI/API/Desktop process, the runtime "
+                    "scheduler starts or stops per the new setting; CLI schedule mode still follows its "
+                    "startup arguments and config.",
                 )
             )
 
@@ -2257,20 +2277,26 @@ class SystemConfigService:
             schedule_time = (current_map.get("SCHEDULE_TIME", "") or "").strip() or "18:00"
             effective = schedule_times or schedule_time
             warnings.append(
-                (
+                ui_text(
                     f"SCHEDULE_TIMES={effective} 已写入 .env。"
                     "有效时间点会去重、排序；为空时继续使用 SCHEDULE_TIME。"
-                    "如果当前进程存在 runtime scheduler，会按新时间重建 daily jobs。"
+                    "如果当前进程存在 runtime scheduler，会按新时间重建 daily jobs。",
+                    f"SCHEDULE_TIMES={effective} written to .env. "
+                    "Valid times are de-duplicated and sorted; when empty, SCHEDULE_TIME is still used. "
+                    "If a runtime scheduler exists in the current process, daily jobs are rebuilt with the new times.",
                 )
             )
 
         if "SCHEDULE_TIME" in submitted_keys:
             schedule_time = (current_map.get("SCHEDULE_TIME", "") or "").strip() or "18:00"
             warnings.append(
-                (
+                ui_text(
                     f"SCHEDULE_TIME={schedule_time} 已写入 .env。"
                     "如果当前进程已经以 schedule 模式运行，scheduler 会在下一轮检查中自动重建 daily job；"
-                    "如果当前进程未以 schedule 模式运行，本次保存不会启动 scheduler。"
+                    "如果当前进程未以 schedule 模式运行，本次保存不会启动 scheduler。",
+                    f"SCHEDULE_TIME={schedule_time} written to .env. "
+                    "If the current process already runs in schedule mode, the scheduler rebuilds the daily job "
+                    "on its next check; otherwise this save will not start the scheduler.",
                 )
             )
 
@@ -2280,10 +2306,14 @@ class SystemConfigService:
         }
         if startup_only_bind_keys:
             warnings.append(
-                (
+                ui_text(
                     f"{', '.join(sorted(startup_only_bind_keys))} 已写入 .env。"
                     "这些属于启动期监听配置：当前已运行的 WebUI/API 进程不会因为本次保存重新绑定监听地址或端口；"
-                    "请重启当前进程、Docker 容器或服务管理器后生效。"
+                    "请重启当前进程、Docker 容器或服务管理器后生效。",
+                    f"{', '.join(sorted(startup_only_bind_keys))} written to .env. "
+                    "These are startup-time listener settings: the running WebUI/API process will not rebind "
+                    "its address or port because of this save; restart the process, Docker container or "
+                    "service manager for them to take effect.",
                 )
             )
 
@@ -2297,9 +2327,9 @@ class SystemConfigService:
     ) -> List[str]:
         """Explain when save payload clears stale runtime model references."""
         runtime_labels = {
-            "LITELLM_MODEL": "主模型",
-            "AGENT_LITELLM_MODEL": "Agent 主模型",
-            "VISION_MODEL": "Vision 模型",
+            "LITELLM_MODEL": ui_text("主模型", "Primary model"),
+            "AGENT_LITELLM_MODEL": ui_text("Agent 主模型", "Agent primary model"),
+            "VISION_MODEL": ui_text("Vision 模型", "Vision model"),
         }
         cleared_labels: List[str] = []
         for key, label in runtime_labels.items():
@@ -2325,14 +2355,19 @@ class SystemConfigService:
 
         cleaned_targets = list(cleared_labels)
         if removed_fallbacks:
-            cleaned_targets.append("备选模型中的失效项")
+            cleaned_targets.append(ui_text("备选模型中的失效项", "stale fallback models"))
 
         cleaned_text = " / ".join(cleaned_targets)
-        warning = (
+        warning = ui_text(
             f"检测到已同步清理失效的运行时模型引用：{cleaned_text}。"
             "如需恢复，请先补回对应渠道模型列表后重新选择；"
             "也可用桌面端导出备份或手动 .env 还原之前的 LLM_* / "
-            "LITELLM_MODEL / AGENT_LITELLM_MODEL / VISION_MODEL / LLM_TEMPERATURE。"
+            "LITELLM_MODEL / AGENT_LITELLM_MODEL / VISION_MODEL / LLM_TEMPERATURE。",
+            f"Detected and cleared stale runtime model references: {cleaned_text}. "
+            "To restore them, first add the models back to the channel model list and select them again; "
+            "you can also restore the previous LLM_* / "
+            "LITELLM_MODEL / AGENT_LITELLM_MODEL / VISION_MODEL / LLM_TEMPERATURE values "
+            "from a desktop export backup or manually via .env.",
         )
         return [warning]
 
@@ -2356,12 +2391,17 @@ class SystemConfigService:
             return []
 
         return [
-            (
+            ui_text(
                 "检测到已清理 Hermes Phase 3 不支持的配置项："
                 f"{', '.join(cleared)}。"
                 "Hermes reserved channel 只支持单个 LLM_HERMES_API_KEY，不支持多 Key 或额外 Header；"
                 "如需恢复旧值，请从 .env 备份、Git 历史或桌面端导出备份手动还原，"
-                "但非空 LLM_HERMES_API_KEYS / LLM_HERMES_EXTRA_HEADERS 仍会被后端校验拒绝。"
+                "但非空 LLM_HERMES_API_KEYS / LLM_HERMES_EXTRA_HEADERS 仍会被后端校验拒绝。",
+                "Cleared settings unsupported by Hermes Phase 3: "
+                f"{', '.join(cleared)}. "
+                "The Hermes reserved channel supports only a single LLM_HERMES_API_KEY, not multiple keys or extra headers; "
+                "to restore old values, do so manually from a .env backup, Git history or a desktop export backup, "
+                "but non-empty LLM_HERMES_API_KEYS / LLM_HERMES_EXTRA_HEADERS will still be rejected by backend validation.",
             )
         ]
 
@@ -2382,7 +2422,7 @@ class SystemConfigService:
         """Parse raw `.env` text into update items without expanding app templates."""
         normalized_content = content.replace("\ufeff", "")
         if not normalized_content.strip():
-            raise ConfigImportError("未识别到有效 .env 配置")
+            raise ConfigImportError(ui_text("未识别到有效 .env 配置", "No valid .env configuration recognized"))
 
         from dotenv import dotenv_values
 
@@ -2399,7 +2439,7 @@ class SystemConfigService:
             )
 
         if not updates:
-            raise ConfigImportError("未识别到有效 .env 配置")
+            raise ConfigImportError(ui_text("未识别到有效 .env 配置", "No valid .env configuration recognized"))
 
         return updates
 
@@ -3081,14 +3121,20 @@ class SystemConfigService:
             ntfy_server_url, ntfy_topic = resolve_ntfy_endpoint(ntfy_url)
             if ntfy_server_url and ntfy_topic:
                 return None
-            return "NTFY_URL 必须包含 topic path，例如 https://ntfy.sh/my-topic。"
+            return ui_text(
+                "NTFY_URL 必须包含 topic path，例如 https://ntfy.sh/my-topic。",
+                "NTFY_URL must include a topic path, e.g. https://ntfy.sh/my-topic.",
+            )
         if channel == "gotify":
             gotify_url = (effective_map.get("GOTIFY_URL") or "").strip()
             if not gotify_url:
                 return None
             if resolve_gotify_message_endpoint(gotify_url):
                 return None
-            return "GOTIFY_URL 必须是 Gotify server base URL，不包含 /message。"
+            return ui_text(
+                "GOTIFY_URL 必须是 Gotify server base URL，不包含 /message。",
+                "GOTIFY_URL must be the Gotify server base URL, without /message.",
+            )
         return None
 
     def _build_notification_test_config(self, effective_map: Dict[str, str]) -> Config:
@@ -3159,11 +3205,11 @@ class SystemConfigService:
             total_count = len(attempts)
             success = success_count > 0
             if success_count == total_count and total_count > 0:
-                message = f"自定义 Webhook 通知测试成功（{success_count}/{total_count}）"
+                message = ui_text(f"自定义 Webhook 通知测试成功（{success_count}/{total_count}）", f"Custom webhook notification test succeeded ({success_count}/{total_count})")
             elif success_count > 0:
-                message = f"自定义 Webhook 通知测试部分成功（{success_count}/{total_count}）"
+                message = ui_text(f"自定义 Webhook 通知测试部分成功（{success_count}/{total_count}）", f"Custom webhook notification test partially succeeded ({success_count}/{total_count})")
             else:
-                message = f"自定义 Webhook 通知测试失败（{success_count}/{total_count}）"
+                message = ui_text(f"自定义 Webhook 通知测试失败（{success_count}/{total_count}）", f"Custom webhook notification test failed ({success_count}/{total_count})")
             return self._build_notification_test_result(
                 success=success,
                 message=message,
@@ -3195,7 +3241,7 @@ class SystemConfigService:
         attempt = {
             "channel": channel,
             "success": ok,
-            "message": "通知测试发送成功" if ok else "通知测试发送失败",
+            "message": ui_text("通知测试发送成功", "Notification test sent successfully") if ok else ui_text("通知测试发送失败", "Notification test failed to send"),
             "target": target,
             "error_code": None if ok else "send_failed",
             "stage": "notification_send",
@@ -3204,7 +3250,7 @@ class SystemConfigService:
         }
         return self._build_notification_test_result(
             success=ok,
-            message=f"{channel} 通知测试成功" if ok else f"{channel} 通知测试失败",
+            message=ui_text(f"{channel} 通知测试成功", f"{channel} notification test succeeded") if ok else ui_text(f"{channel} 通知测试失败", f"{channel} notification test failed"),
             error_code=None if ok else "send_failed",
             stage="notification_send",
             retryable=False,
@@ -4665,11 +4711,15 @@ class SystemConfigService:
                 {
                     "key": "FEISHU_CHAT_ID",
                     "code": "feishu_mode_mismatch",
-                    "message": (
+                    "message": ui_text(
                         "仅配置 FEISHU_APP_ID / FEISHU_APP_SECRET 不会开启飞书静态通知；"
                         "App Bot 主动推送需要同时配置 FEISHU_CHAT_ID，"
                         "Webhook 推送请填写 FEISHU_WEBHOOK_URL；"
-                        "事件订阅请使用 FEISHU_STREAM_ENABLED=true 并完成应用发布与权限配置。"
+                        "事件订阅请使用 FEISHU_STREAM_ENABLED=true 并完成应用发布与权限配置。",
+                        "Configuring only FEISHU_APP_ID / FEISHU_APP_SECRET does not enable Feishu static notifications; "
+                        "App Bot push also requires FEISHU_CHAT_ID, "
+                        "for Webhook push set FEISHU_WEBHOOK_URL; "
+                        "for event subscriptions use FEISHU_STREAM_ENABLED=true and complete app publishing and permission setup.",
                     ),
                     "severity": "warning",
                     "expected": (
