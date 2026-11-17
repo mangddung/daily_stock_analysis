@@ -15,6 +15,7 @@ import logging
 from typing import Optional
 import re
 
+from src.ui_language import ui_text
 from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile, Depends
 
 from api.deps import get_system_config_service
@@ -103,14 +104,14 @@ def _validate_and_normalize_stock_code(code: str) -> str:
     if not stripped:
         raise HTTPException(
             status_code=400,
-            detail={"error": "invalid_stock_code", "message": "股票代码不能为空"},
+            detail={"error": "invalid_stock_code", "message": ui_text("股票代码不能为空", "Stock code must not be empty")},
         )
     if not _STOCK_CODE_RE.match(stripped):
         raise HTTPException(
             status_code=400,
             detail={
                 "error": "invalid_stock_code",
-                "message": f"'{stripped}' 不是合法的股票代码格式",
+                "message": ui_text(f"'{stripped}' 不是合法的股票代码格式", f"'{stripped}' is not a valid stock code format"),
             },
         )
     return normalize_stock_code(stripped)
@@ -147,7 +148,7 @@ def extract_from_image(
     if not file or not file.filename:
         raise HTTPException(
             status_code=400,
-            detail={"error": "bad_request", "message": "未提供文件，请使用表单字段 file 上传图片"},
+            detail={"error": "bad_request", "message": ui_text("未提供文件，请使用表单字段 file 上传图片", "No file provided. Upload an image using the form field file")},
         )
 
     content_type = (file.content_type or "").split(";")[0].strip().lower()
@@ -156,7 +157,7 @@ def extract_from_image(
             status_code=400,
             detail={
                 "error": "unsupported_type",
-                "message": f"不支持的类型: {content_type}。允许: {ALLOWED_MIME_STR}",
+                "message": ui_text(f"不支持的类型: {content_type}。允许: {ALLOWED_MIME_STR}", f"Unsupported type: {content_type}. Allowed: {ALLOWED_MIME_STR}"),
             },
         )
 
@@ -168,7 +169,7 @@ def extract_from_image(
                 status_code=400,
                 detail={
                     "error": "file_too_large",
-                    "message": f"图片超过 {MAX_SIZE_BYTES // (1024 * 1024)}MB 限制",
+                    "message": ui_text(f"图片超过 {MAX_SIZE_BYTES // (1024 * 1024)}MB 限制", f"Image exceeds the {MAX_SIZE_BYTES // (1024 * 1024)}MB limit"),
                 },
             )
     except HTTPException:
@@ -177,7 +178,7 @@ def extract_from_image(
         logger.warning(f"读取上传文件失败: {e}")
         raise HTTPException(
             status_code=400,
-            detail={"error": "read_failed", "message": "读取上传文件失败"},
+            detail={"error": "read_failed", "message": ui_text("读取上传文件失败", "Failed to read the uploaded file")},
         )
 
     try:
@@ -197,7 +198,7 @@ def extract_from_image(
         logger.error(f"图片提取失败: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail={"error": "internal_error", "message": "图片提取失败"},
+            detail={"error": "internal_error", "message": ui_text("图片提取失败", "Image extraction failed")},
         )
 
 
@@ -229,13 +230,13 @@ async def parse_import(request: Request) -> ExtractFromImageResponse:
             logger.warning("[parse_import] JSON parse failed: %s", e)
             raise HTTPException(
                 status_code=400,
-                detail={"error": "invalid_json", "message": f"JSON 解析失败: {e}"},
+                detail={"error": "invalid_json", "message": ui_text(f"JSON 解析失败: {e}", f"Failed to parse JSON: {e}")},
             )
         text = body.get("text") if isinstance(body, dict) else None
         if not text or not isinstance(text, str):
             raise HTTPException(
                 status_code=400,
-                detail={"error": "bad_request", "message": "未提供 text，请使用 {\"text\": \"...\"}"},
+                detail={"error": "bad_request", "message": ui_text("未提供 text，请使用 {\"text\": \"...\"}", "No text provided. Use {\"text\": \"...\"}")},
             )
         try:
             items = parse_import_from_text(text)
@@ -253,7 +254,7 @@ async def parse_import(request: Request) -> ExtractFromImageResponse:
         if not file or not hasattr(file, "read"):
             raise HTTPException(
                 status_code=400,
-                detail={"error": "bad_request", "message": "未提供文件，请使用表单字段 file"},
+                detail={"error": "bad_request", "message": ui_text("未提供文件，请使用表单字段 file", "No file provided. Use the form field file")},
             )
         file_size = getattr(file, "size", None)
         if isinstance(file_size, int) and file_size > MAX_FILE_BYTES:
@@ -261,7 +262,7 @@ async def parse_import(request: Request) -> ExtractFromImageResponse:
                 status_code=400,
                 detail={
                     "error": "file_too_large",
-                    "message": f"文件超过 {MAX_FILE_BYTES // (1024 * 1024)}MB 限制",
+                    "message": ui_text(f"文件超过 {MAX_FILE_BYTES // (1024 * 1024)}MB 限制", f"File exceeds the {MAX_FILE_BYTES // (1024 * 1024)}MB limit"),
                 },
             )
         try:
@@ -271,7 +272,7 @@ async def parse_import(request: Request) -> ExtractFromImageResponse:
                     status_code=400,
                     detail={
                         "error": "file_too_large",
-                        "message": f"文件超过 {MAX_FILE_BYTES // (1024 * 1024)}MB 限制",
+                        "message": ui_text(f"文件超过 {MAX_FILE_BYTES // (1024 * 1024)}MB 限制", f"File exceeds the {MAX_FILE_BYTES // (1024 * 1024)}MB limit"),
                     },
                 )
         except HTTPException:
@@ -287,7 +288,7 @@ async def parse_import(request: Request) -> ExtractFromImageResponse:
             )
             raise HTTPException(
                 status_code=400,
-                detail={"error": "read_failed", "message": "读取文件失败"},
+                detail={"error": "read_failed", "message": ui_text("读取文件失败", "Failed to read the file")},
             )
         filename = getattr(file, "filename", None) or ""
         try:
@@ -307,7 +308,7 @@ async def parse_import(request: Request) -> ExtractFromImageResponse:
             status_code=400,
             detail={
                 "error": "bad_request",
-                "message": "请使用 multipart/form-data 上传文件，或 application/json 提交 {\"text\": \"...\"}",
+                "message": ui_text("请使用 multipart/form-data 上传文件，或 application/json 提交 {\"text\": \"...\"}", "Upload a file using multipart/form-data, or submit {\"text\": \"...\"} as application/json"),
             },
         )
 
@@ -334,12 +335,12 @@ def get_watchlist(
 ) -> WatchlistResponse:
     try:
         codes = _read_watchlist_codes(service)
-        return WatchlistResponse(stock_codes=codes, message=f"当前自选 {len(codes)} 只股票")
+        return WatchlistResponse(stock_codes=codes, message=ui_text(f"当前自选 {len(codes)} 只股票", f"Watchlist has {len(codes)} stocks"))
     except Exception as e:
         logger.error(f"获取自选队列失败: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail={"error": "internal_error", "message": f"获取自选队列失败: {str(e)}"},
+            detail={"error": "internal_error", "message": ui_text(f"获取自选队列失败: {str(e)}", f"Failed to fetch watchlist: {str(e)}")},
         )
 
 
@@ -365,14 +366,14 @@ def add_to_watchlist(
         if _watchlist_match_key(validated) not in existing_keys:
             codes.append(request.stock_code.strip())
             _write_watchlist_codes(service, codes)
-        return WatchlistResponse(stock_codes=codes, message=f"已加入 {request.stock_code.strip()}")
+        return WatchlistResponse(stock_codes=codes, message=ui_text(f"已加入 {request.stock_code.strip()}", f"Added {request.stock_code.strip()}"))
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"加入自选失败: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail={"error": "internal_error", "message": f"加入自选失败: {str(e)}"},
+            detail={"error": "internal_error", "message": ui_text(f"加入自选失败: {str(e)}", f"Failed to add to watchlist: {str(e)}")},
         )
 
 
@@ -400,14 +401,14 @@ def remove_from_watchlist(
             idx = existing_keys.index(requested_key)
             codes.pop(idx)
             _write_watchlist_codes(service, codes)
-        return WatchlistResponse(stock_codes=codes, message=f"已移除 {request.stock_code.strip()}")
+        return WatchlistResponse(stock_codes=codes, message=ui_text(f"已移除 {request.stock_code.strip()}", f"Removed {request.stock_code.strip()}"))
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"从自选删除失败: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail={"error": "internal_error", "message": f"从自选删除失败: {str(e)}"},
+            detail={"error": "internal_error", "message": ui_text(f"从自选删除失败: {str(e)}", f"Failed to remove from watchlist: {str(e)}")},
         )
 
 
@@ -434,14 +435,14 @@ def get_stock_profile(
     except InvalidStockProfileCode:
         raise HTTPException(
             status_code=400,
-            detail={"error": "invalid_stock_code", "message": "股票代码与交易所不匹配"},
+            detail={"error": "invalid_stock_code", "message": ui_text("股票代码与交易所不匹配", "Stock code does not match the exchange")},
         )
     except Exception as exc:
         sanitized = sanitize_diagnostic_text(str(exc), max_length=300) or "internal profile error"
         logger.error("获取个股研究聚合档案失败: %s", sanitized)
         raise HTTPException(
             status_code=500,
-            detail={"error": "internal_error", "message": "获取个股研究聚合档案失败"},
+            detail={"error": "internal_error", "message": ui_text("获取个股研究聚合档案失败", "Failed to fetch the aggregated stock research profile")},
         )
 
 
@@ -482,7 +483,7 @@ def get_stock_quote(stock_code: str) -> StockQuote:
                 status_code=404,
                 detail={
                     "error": "not_found",
-                    "message": f"未找到股票 {stock_code} 的行情数据"
+                    "message": ui_text(f"未找到股票 {stock_code} 的行情数据", f"No market data found for stock {stock_code}")
                 }
             )
         
@@ -509,7 +510,7 @@ def get_stock_quote(stock_code: str) -> StockQuote:
             status_code=500,
             detail={
                 "error": "internal_error",
-                "message": f"获取实时行情失败: {str(e)}"
+                "message": ui_text(f"获取实时行情失败: {str(e)}", f"Failed to fetch real-time quote: {str(e)}")
             }
         )
 
@@ -590,6 +591,6 @@ def get_stock_history(
             status_code=500,
             detail={
                 "error": "internal_error",
-                "message": f"获取历史行情失败: {str(e)}"
+                "message": ui_text(f"获取历史行情失败: {str(e)}", f"Failed to fetch historical quotes: {str(e)}")
             }
         )

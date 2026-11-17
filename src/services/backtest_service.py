@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from sqlalchemy import and_, select
 
 from data_provider.base import canonical_stock_code, normalize_stock_code
+from src.ui_language import ui_text
 from src.config import get_config
 from src.core.backtest_engine import OVERALL_SENTINEL_CODE, BacktestEngine, EvaluationConfig
 from src.market_phase_summary import (
@@ -431,7 +432,7 @@ class BacktestService:
 
         identity = resolve_daily_stock_identity(str(code).strip())
         if identity is None:
-            raise ValueError(f"非法股票代码格式: {code}")
+            raise ValueError(ui_text(f"非法股票代码格式: {code}", f"Invalid stock code format: {code}"))
         return identity.normalized_code
 
     @staticmethod
@@ -524,19 +525,19 @@ class BacktestService:
         if processed == 0:
             if has_matching_analysis:
                 diagnostics["empty_reason"] = "no_new_results"
-                message = "历史分析记录已存在，当前筛选条件下没有新的回测任务可执行。"
+                message = ui_text("历史分析记录已存在，当前筛选条件下没有新的回测任务可执行。", "Historical analysis records already exist, but no new backtest tasks can run under the current filters.")
             else:
                 diagnostics["empty_reason"] = "no_matching_analysis"
-                message = "未找到符合条件的历史分析记录，请检查股票代码、分析日期范围、最小天龄或是否已生成历史分析。"
+                message = ui_text("未找到符合条件的历史分析记录，请检查股票代码、分析日期范围、最小天龄或是否已生成历史分析。", "No matching historical analysis records found. Check the stock code, analysis date range, minimum age, or whether historical analysis has been generated.")
         elif completed == 0 and insufficient > 0 and errors == 0:
             diagnostics["empty_reason"] = "insufficient_daily_data"
-            message = "已找到历史分析记录，但可用日线行情不足，无法完成回测。"
+            message = ui_text("已找到历史分析记录，但可用日线行情不足，无法完成回测。", "Historical analysis records found, but there is not enough daily market data to complete the backtest.")
         elif completed == 0 and errors > 0:
             diagnostics["empty_reason"] = "evaluation_error"
-            message = "已找到历史分析记录，但回测计算失败，请查看后端日志或放宽筛选条件。"
+            message = ui_text("已找到历史分析记录，但回测计算失败，请查看后端日志或放宽筛选条件。", "Historical analysis records found, but the backtest calculation failed. Check the backend logs or relax the filters.")
         elif saved == 0 and completed == 0:
             diagnostics["empty_reason"] = "no_new_results"
-            message = "没有写入新的回测结果；如需覆盖已有结果，请启用强制重跑。"
+            message = ui_text("没有写入新的回测结果；如需覆盖已有结果，请启用强制重跑。", "No new backtest results were written. Enable force rerun to overwrite existing results.")
 
         if message:
             diagnostics["message"] = message
