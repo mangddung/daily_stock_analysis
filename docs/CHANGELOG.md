@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 <!-- 新条目格式：- [类型] 描述（类型取值：新功能/改进/修复/文档/测试/chore）-->
+- [修复] 问股页面英文界面下仍显示中文的问题，补齐会话侧栏、输入区、导出与错误提示的中英文文案。
 
 ## [3.35.0] - 2026-11-16
 

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { systemConfigApi } from '../api/systemConfig';
 import { findMatchingStockCode, includesStockCode } from '../utils/stockCode';
+import { useUiLanguage } from '../contexts/UiLanguageContext';
+import { chatText } from '../locales/chat';
 
 export interface UseWatchlistReturn {
   watchlistCodes: string[];
@@ -15,6 +17,7 @@ export interface UseWatchlistReturn {
 }
 
 export function useWatchlist(): UseWatchlistReturn {
+  const { language } = useUiLanguage();
   const [codes, setCodes] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isActioning, setIsActioning] = useState(false);
@@ -76,14 +79,14 @@ export function useWatchlist(): UseWatchlistReturn {
       const result = await systemConfigApi.addToWatchlist(stockCode);
       if (mountedRef.current) {
         setCodes(result);
-        showMessage(`已加入自选 ${stockCode}`);
+        showMessage(chatText(language, 'watchlistAddedShort', { code: stockCode }));
       }
     } catch {
-      if (mountedRef.current) showMessage('操作失败');
+      if (mountedRef.current) showMessage(chatText(language, 'watchlistFailedShort'));
     } finally {
       if (mountedRef.current) setIsActioning(false);
     }
-  }, [isActioning, showMessage]);
+  }, [isActioning, language, showMessage]);
 
   const removeFromWatchlist = useCallback(async (stockCode: string) => {
     if (!stockCode || isActioning) return;
@@ -92,14 +95,14 @@ export function useWatchlist(): UseWatchlistReturn {
       const result = await systemConfigApi.removeFromWatchlist(stockCode);
       if (mountedRef.current) {
         setCodes(result);
-        showMessage(`已从自选移除 ${stockCode}`);
+        showMessage(chatText(language, 'watchlistRemovedShort', { code: stockCode }));
       }
     } catch {
-      if (mountedRef.current) showMessage('操作失败');
+      if (mountedRef.current) showMessage(chatText(language, 'watchlistFailedShort'));
     } finally {
       if (mountedRef.current) setIsActioning(false);
     }
-  }, [isActioning, showMessage]);
+  }, [isActioning, language, showMessage]);
 
   const toggleWatchlist = useCallback(async (stockCode: string) => {
     const existingStockCode = findMatchingStockCode(codes, stockCode);
