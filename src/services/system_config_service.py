@@ -91,6 +91,7 @@ from src.notification_noise import validate_notification_timezone
 from src.notification_sender.gotify_sender import resolve_gotify_message_endpoint
 from src.notification_sender.ntfy_sender import resolve_ntfy_endpoint
 from src.services.stock_list_parser import split_stock_list
+from src.services.setup_status_i18n import localize_setup_status
 from src.services.generation_backend_status_service import GenerationBackendStatusService
 from src.services.agent_backend_status_service import AgentBackendStatusService
 
@@ -604,8 +605,11 @@ class SystemConfigService:
                 ],
             )
 
-    def get_setup_status(self) -> Dict[str, Any]:
+    def get_setup_status(self, language: Optional[str] = None) -> Dict[str, Any]:
         """Return read-only first-run setup status without mutating runtime state."""
+        return localize_setup_status(self._get_setup_status_zh(), language)
+
+    def _get_setup_status_zh(self) -> Dict[str, Any]:
         effective_map = self._build_setup_effective_config_map()
         llm_check = self._build_setup_primary_llm_check(effective_map)
         agent_check = self._build_setup_agent_llm_check(effective_map, llm_check)

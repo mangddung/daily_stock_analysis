@@ -793,7 +793,7 @@ const SettingsPage: React.FC = () => {
     setSetupStatusError(null);
     setIsRefreshingSetupStatus(true);
     try {
-      const status = await systemConfigApi.getSetupStatus();
+      const status = await systemConfigApi.getSetupStatus(uiLanguage);
       if (setupStatusRequestIdRef.current !== requestId) {
         return;
       }
@@ -808,7 +808,7 @@ const SettingsPage: React.FC = () => {
         setIsRefreshingSetupStatus(false);
       }
     }
-  }, []);
+  }, [uiLanguage]);
 
   useEffect(() => {
     void load();

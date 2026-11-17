@@ -199,8 +199,11 @@ export const systemConfigApi = {
     return toCamelCase<SystemConfigSchemaResponse>(response.data);
   },
 
-  async getSetupStatus(): Promise<SetupStatusResponse> {
-    const response = await apiClient.get<Record<string, unknown>>('/api/v1/system/config/setup/status');
+  async getSetupStatus(language?: 'zh' | 'en'): Promise<SetupStatusResponse> {
+    // zh is the backend default; only send the param when another language is requested.
+    const response = language && language !== 'zh'
+      ? await apiClient.get<Record<string, unknown>>('/api/v1/system/config/setup/status', { params: { language } })
+      : await apiClient.get<Record<string, unknown>>('/api/v1/system/config/setup/status');
     return toCamelCase<SetupStatusResponse>(response.data);
   },
 

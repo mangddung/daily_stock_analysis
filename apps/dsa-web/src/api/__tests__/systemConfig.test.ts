@@ -173,9 +173,18 @@ describe('systemConfigApi', () => {
     const result = await systemConfigApi.getSetupStatus();
 
     expect(get).toHaveBeenCalledWith('/api/v1/system/config/setup/status');
+
     expect(result.isComplete).toBe(false);
     expect(result.nextStepKey).toBe('llm_primary');
     expect(result.checks[0].nextStep).toBe('打开系统设置');
+  });
+
+  it('requests English setup status only when the UI language is English', async () => {
+    get.mockResolvedValueOnce({ data: { is_complete: true, checks: [] } });
+
+    await systemConfigApi.getSetupStatus('en');
+
+    expect(get).toHaveBeenCalledWith('/api/v1/system/config/setup/status', { params: { language: 'en' } });
   });
 
   it('loads generation backend status with camelCase fields', async () => {

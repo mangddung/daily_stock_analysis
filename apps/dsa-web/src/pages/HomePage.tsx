@@ -453,7 +453,7 @@ const HomePage: React.FC = () => {
 
   useEffect(() => {
     let active = true;
-    systemConfigApi.getSetupStatus()
+    systemConfigApi.getSetupStatus(uiLanguage)
       .then((status) => {
         if (active) {
           setSetupStatus(status);
@@ -468,7 +468,7 @@ const HomePage: React.FC = () => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [uiLanguage]);
 
   useEffect(() => {
     let active = true;
