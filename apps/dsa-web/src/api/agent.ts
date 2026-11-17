@@ -1,5 +1,6 @@
 import apiClient from './index';
 import { API_BASE_URL } from '../utils/constants';
+import { getActiveUiLanguage, UI_LANGUAGE_HEADER } from '../utils/uiLanguage';
 import { createApiError, createParsedApiError, isApiRequestError, parseApiError } from './error';
 import { toCamelCase } from './utils';
 import type { AgentBackendStatusResponse } from '../types/systemConfig';
@@ -189,7 +190,7 @@ export const agentApi = {
     try {
       const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', [UI_LANGUAGE_HEADER]: getActiveUiLanguage() },
         body: JSON.stringify(payload),
         credentials: 'include',
         signal: options?.signal,

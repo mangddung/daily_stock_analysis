@@ -1,6 +1,8 @@
 import type { UiLanguage } from '../i18n/uiText';
 
 export const UI_LANGUAGE_STORAGE_KEY = 'dsa.uiLanguage';
+/** Request header read by the backend (src/ui_language.py) to localize generated text. */
+export const UI_LANGUAGE_HEADER = 'X-DSA-UI-Language';
 
 export function normalizeUiLanguage(value?: string | null): UiLanguage | null {
   if (value === 'zh' || value === 'en') {

@@ -169,6 +169,7 @@ from api.middlewares.security_guard import add_guard_middleware, is_guard_enable
 from api.middlewares.error_handler import add_error_handlers
 from api.v1.schemas.common import HealthResponse
 from src.auth import is_auth_enabled
+from src.ui_language import UiLanguageMiddleware
 from src.data.stock_index_loader import find_existing_stock_index_path
 from src.services.system_config_service import SystemConfigService
 from src.services.runtime_scheduler import (
@@ -386,7 +387,9 @@ def create_app(static_dir: Optional[Path] = None) -> FastAPI:
 
     if not guard_enabled:
         add_auth_middleware(app)
-    
+
+    app.add_middleware(UiLanguageMiddleware)
+
     # ============================================================
     # 注册路由
     # ============================================================
