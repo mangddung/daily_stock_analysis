@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 <!-- 新条目格式：- [类型] 描述（类型取值：新功能/改进/修复/文档/测试/chore）-->
+- [修复] 系统设置 LLM 渠道编辑器英文界面下仍显示中文的问题，补齐中英文文案。
 
 ## [3.35.0] - 2026-11-16
 

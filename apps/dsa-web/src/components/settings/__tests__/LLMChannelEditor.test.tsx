@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LLMChannelEditor } from '../LLMChannelEditor';
+import { UiLanguageProvider } from '../../../contexts/UiLanguageContext';
+import { UI_LANGUAGE_STORAGE_KEY } from '../../../utils/uiLanguage';
 
 const {
   update,
@@ -515,6 +517,35 @@ describe('LLMChannelEditor', () => {
 
     expect(await screen.findByText(/Mixed Hermes\/non-Hermes route 暂不支持作为主生成或备选模型/i)).toBeInTheDocument();
     expect(update).not.toHaveBeenCalled();
+  });
+
+  it('renders channel editor text and test failures in English UI mode', async () => {
+    window.localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, 'en');
+    testLLMChannel.mockResolvedValue({
+      success: false,
+      message: 'bad key',
+      stage: 'chat_completion',
+      errorCode: 'auth',
+      details: {},
+    });
+    try {
+      render(
+        <UiLanguageProvider>
+          <LLMChannelEditor items={openAiItems} configVersion="v1" maskToken="******" onSaved={() => {}} />
+        </UiLanguageProvider>
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /OpenAI \(official\)/ }));
+      expect(screen.getByLabelText('Channel name')).toBeInTheDocument();
+      expect(screen.getByText('Reference')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Save AI configuration' })).toBeDisabled();
+      fireEvent.click(screen.getByRole('button', { name: 'Test connection' }));
+
+      expect(await screen.findByText('Chat call · Authentication failed: bad key')).toBeInTheDocument();
+      expect(document.body.textContent).not.toMatch(/[一-龥]/);
+    } finally {
+      window.localStorage.removeItem(UI_LANGUAGE_STORAGE_KEY);
+    }
   });
 
   it('does not test runtime-only masked Hermes secrets from the settings UI', async () => {
