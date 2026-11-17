@@ -565,6 +565,32 @@ describe('ChatPage', () => {
     expect(screen.queryByText('暂时无法读取问股运行状态')).not.toBeInTheDocument();
   });
 
+  it('renders chat page chrome in English UI mode', async () => {
+    window.localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, 'en');
+    mockStoreState.messages = [
+      { id: 'user-1', role: 'user', content: 'Analyze 600519' },
+      { id: 'assistant-1', role: 'assistant', content: 'Strong trend', skillName: 'Trend' },
+    ];
+
+    render(
+      <UiLanguageProvider>
+        <MemoryRouter initialEntries={['/chat']}>
+          <ChatPage />
+        </MemoryRouter>
+      </UiLanguageProvider>,
+    );
+
+    expect(await screen.findByRole('heading', { name: /Ask/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Export chat as a Markdown file' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Send to configured notification bots/email' })).toBeInTheDocument();
+    expect(screen.getAllByText('Chat history').length).toBeGreaterThan(0);
+    expect(screen.getByText('2 messages')).toBeInTheDocument();
+    expect(screen.getByText('Context compression')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Enter to send/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Export this message as Markdown' })).toBeInTheDocument();
+    expect(screen.queryByText(/历史对话|导出会话|上下文压缩|发送/)).not.toBeInTheDocument();
+  });
+
   it('renders a fixed workspace shell with independent session and message viewports', async () => {
     render(
       <MemoryRouter initialEntries={['/chat']}>
@@ -724,7 +750,7 @@ describe('ChatPage', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: '导出会话为 Markdown 文件' }));
 
-    expect(mockDownloadSession).toHaveBeenCalledWith(mockStoreState.messages);
+    expect(mockDownloadSession).toHaveBeenCalledWith(mockStoreState.messages, 'zh');
     expect(mockFormatSessionAsMarkdown).not.toHaveBeenCalled();
   });
 
@@ -1268,7 +1294,7 @@ describe('ChatPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: '发送到已配置的通知机器人/邮箱' }));
 
     await waitFor(() => {
-      expect(mockFormatSessionAsMarkdown).toHaveBeenCalledWith(mockStoreState.messages);
+      expect(mockFormatSessionAsMarkdown).toHaveBeenCalledWith(mockStoreState.messages, 'zh');
       expect(mockSendChat).toHaveBeenCalledWith('# exported markdown');
     });
 
