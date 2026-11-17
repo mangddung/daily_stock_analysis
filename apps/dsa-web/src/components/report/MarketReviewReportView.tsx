@@ -102,12 +102,12 @@ const getSectionIcon = (title: string): typeof FileText => {
   return FileText;
 };
 
-const splitMarketReviewSections = (markdown: string): MarketReviewSection[] => {
+const splitMarketReviewSections = (markdown: string, language: ReportLanguage): MarketReviewSection[] => {
   const matches = Array.from(markdown.matchAll(SECTION_HEADING_PATTERN));
   if (matches.length === 0) {
     return [{
       id: 'full-review',
-      title: '复盘正文',
+      title: MARKET_REVIEW_TEXT[language].fullReview,
       content: markdown,
       icon: FileText,
     }];
@@ -117,7 +117,7 @@ const splitMarketReviewSections = (markdown: string): MarketReviewSection[] => {
   const sections: MarketReviewSection[] = intro
     ? [{
         id: 'overview',
-        title: '复盘概览',
+        title: MARKET_REVIEW_TEXT[language].overview,
         content: intro,
         icon: FileText,
       }]
@@ -258,6 +258,8 @@ const formatMarketHighLow = (high: unknown, low: unknown): string => {
 };
 
 const MARKET_REVIEW_TEXT: Record<ReportLanguage, {
+  fullReview: string;
+  overview: string;
   reviewSummary: string;
   noReviewSummary: string;
   noSentimentScore: string;
@@ -281,6 +283,8 @@ const MARKET_REVIEW_TEXT: Record<ReportLanguage, {
   lagging: string;
 }> = {
   zh: {
+    fullReview: '复盘正文',
+    overview: '复盘概览',
     reviewSummary: '复盘摘要',
     noReviewSummary: '暂无摘要',
     noSentimentScore: '暂无评分',
@@ -304,6 +308,8 @@ const MARKET_REVIEW_TEXT: Record<ReportLanguage, {
     lagging: '领跌',
   },
   en: {
+    fullReview: 'Full Review',
+    overview: 'Overview',
     reviewSummary: 'Review Summary',
     noReviewSummary: 'No review summary yet',
     noSentimentScore: 'No score yet',
@@ -327,6 +333,8 @@ const MARKET_REVIEW_TEXT: Record<ReportLanguage, {
     lagging: 'Lagging',
   },
   ko: {
+    fullReview: '리뷰 본문',
+    overview: '리뷰 개요',
     reviewSummary: '리뷰 요약',
     noReviewSummary: '요약 없음',
     noSentimentScore: '점수 없음',
@@ -393,9 +401,9 @@ export const MarketReviewReportView: React.FC<MarketReviewReportViewProps> = ({
   const sections = useMemo(
     () => {
       const payloadSections = getPayloadSections(marketReviewPayload);
-      return payloadSections.length > 0 ? payloadSections : splitMarketReviewSections(structuredContent);
+      return payloadSections.length > 0 ? payloadSections : splitMarketReviewSections(structuredContent, normalizedReportLanguage);
     },
-    [marketReviewPayload, structuredContent],
+    [marketReviewPayload, structuredContent, normalizedReportLanguage],
   );
   const structuredMarketData = useMemo(
     () => getStructuredMarketData(marketReviewPayload),

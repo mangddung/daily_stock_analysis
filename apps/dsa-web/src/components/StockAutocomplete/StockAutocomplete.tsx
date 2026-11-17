@@ -13,6 +13,8 @@ import { useStockIndex } from '../../hooks/useStockIndex';
 import { useAutocomplete } from '../../hooks/useAutocomplete';
 import { SuggestionsList } from './SuggestionsList';
 import { cn } from '../../utils/cn';
+import { useUiLanguage } from '../../contexts/UiLanguageContext';
+import { COMMON_TEXT } from '../../locales/common';
 import type { Market } from '../../types/stockIndex';
 
 const AUTOCOMPLETE_INPUT_CLASS =
@@ -45,10 +47,12 @@ function FallbackInput({
   onChange,
   onSubmit,
   disabled = false,
-  placeholder = '输入股票代码或名称',
+  placeholder: placeholderProp,
   ariaLabel,
   className,
 }: StockAutocompleteProps) {
+  const { language } = useUiLanguage();
+  const placeholder = placeholderProp ?? COMMON_TEXT[language].stockSearchPlaceholder;
   return (
     <input
       type="text"
@@ -107,10 +111,12 @@ function StockAutocompleteInner({
   onChange,
   onSubmit,
   disabled = false,
-  placeholder = '输入股票代码或名称',
+  placeholder: placeholderProp,
   ariaLabel,
   className,
 }: StockAutocompleteProps) {
+  const { language } = useUiLanguage();
+  const placeholder = placeholderProp ?? COMMON_TEXT[language].stockSearchPlaceholder;
   const { index, loading, fallback } = useStockIndex();
   const {
     // query,

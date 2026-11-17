@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 <!-- 新条目格式：- [类型] 描述（类型取值：新功能/改进/修复/文档/测试/chore）-->
+- [修复] 英文界面下 404 页面、复盘报告标题、股票搜索市场标签、运行流程连线标签等零散文案仍显示中文的问题。
 
 ## [3.35.0] - 2026-11-16
 
