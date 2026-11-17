@@ -692,6 +692,23 @@ describe('PortfolioPage FX refresh', () => {
     expect(dashboard.queryByText('No exposure data')).not.toBeInTheDocument();
   });
 
+  it('renders entry forms, CSV import and event log in English UI mode', async () => {
+    renderEnglishPage();
+    await waitForInitialLoad();
+
+    expect(screen.getByText('Manual entry: Trade')).toBeInTheDocument();
+    expect(screen.getByText('Manual entry: Cash flow')).toBeInTheDocument();
+    expect(screen.getByText('Manual entry: Corporate action')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Stock code (e.g. 600519)')).toBeInTheDocument();
+    expect(screen.getByText('Broker CSV import')).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'huatai (Huatai)' })).toBeInTheDocument();
+    expect(screen.getByText('Event log')).toBeInTheDocument();
+    expect(await screen.findByText('No entries')).toBeInTheDocument();
+    expect(screen.getByText('Page 1 / 1')).toBeInTheDocument();
+    expect(screen.queryByText('手工录入：交易')).not.toBeInTheDocument();
+    expect(screen.queryByText('事件记录')).not.toBeInTheDocument();
+  });
+
   it('hides exposure breakdowns when positions mix valuation currencies under one aggregate snapshot', async () => {
     getSnapshot.mockResolvedValueOnce({
       asOf: '2026-03-19',
