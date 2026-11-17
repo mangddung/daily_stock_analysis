@@ -3,6 +3,8 @@ import { useMemo, useId } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Badge, StatusDot } from '../common';
 import { useUiLanguage } from '../../contexts/UiLanguageContext';
+import type { UiLanguage } from '../../i18n/uiText';
+import { getRunFlowEdgeLabel } from '../../locales/common';
 import type { RunFlowEdge, RunFlowLane, RunFlowNode, RunFlowStatus } from '../../types/runFlow';
 import {
   compactText,
@@ -148,11 +150,11 @@ const getLaneRowHeight = (laneId: string): number => (
 
 const isExpandableNode = (node: RunFlowNode): boolean => node.metadata?.topologyGroup === 'provider_attempts';
 
-const getEdgeLabel = (label: string | null | undefined, t: RunFlowT): string | null => {
+const getEdgeLabel = (label: string | null | undefined, t: RunFlowT, language: UiLanguage): string | null => {
   if (!label) return null;
   if (label === '调用') return t('runFlow.edgeLabel.invoke');
   if (label === '详情') return t('runFlow.edgeLabel.details');
-  return label;
+  return getRunFlowEdgeLabel(label, language);
 };
 
 const metadataString = (node: RunFlowNode, key: string): string | null => {
@@ -609,12 +611,12 @@ export const RunFlowGraph: React.FC<RunFlowGraphProps> = ({
     displayLabel: string | null;
     showLabel: boolean;
   }>>((items, item) => {
-    const displayLabel = getEdgeLabel(item.edge.label, t);
+    const displayLabel = getEdgeLabel(item.edge.label, t, language);
     const labelKey = `${item.edge.to}:${displayLabel || ''}`;
     const duplicateLabel = items.some((existing) => (
       existing.relatedToSelected
-      && getEdgeLabel(existing.edge.label, t)
-      && `${existing.edge.to}:${getEdgeLabel(existing.edge.label, t)}` === labelKey
+      && getEdgeLabel(existing.edge.label, t, language)
+      && `${existing.edge.to}:${getEdgeLabel(existing.edge.label, t, language)}` === labelKey
     ));
     items.push({
       ...item,
