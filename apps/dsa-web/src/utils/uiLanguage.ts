@@ -89,3 +89,14 @@ export function getRuntimeInitialLanguage(): UiLanguage {
     navigatorLike: window.navigator,
   });
 }
+
+let activeUiLanguage: UiLanguage | null = null;
+
+/** Called by UiLanguageProvider so code outside React (API error parsing, stores) follows the toggle. */
+export function setActiveUiLanguage(language: UiLanguage): void {
+  activeUiLanguage = language;
+}
+
+export function getActiveUiLanguage(): UiLanguage {
+  return activeUiLanguage ?? getStoredUiLanguage(getUiLanguageStorage()) ?? 'zh';
+}

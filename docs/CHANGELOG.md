@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 <!-- 新条目格式：- [类型] 描述（类型取值：新功能/改进/修复/文档/测试/chore）-->
+- [修复] 英文界面下通用错误提示、登录与自选股输入校验仍显示中文的问题，补齐中英文文案。
 
 ## [3.35.0] - 2026-11-16
 
