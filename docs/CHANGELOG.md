@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 <!-- 新条目格式：- [类型] 描述（类型取值：新功能/改进/修复/文档/测试/chore）-->
+- [修复] 持仓页面英文界面下表单、导入与流水记录仍显示中文的问题，补齐中英文文案。
 
 ## [3.35.0] - 2026-11-16
 
