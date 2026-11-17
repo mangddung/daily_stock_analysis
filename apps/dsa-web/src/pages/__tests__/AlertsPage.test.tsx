@@ -1,6 +1,8 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AlertsPage from '../AlertsPage';
+import { UiLanguageProvider } from '../../contexts/UiLanguageContext';
+import { UI_LANGUAGE_STORAGE_KEY } from '../../utils/uiLanguage';
 
 const {
   listRules,
@@ -73,6 +75,7 @@ function createDeferred<T>() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  window.localStorage.clear();
   listRules.mockResolvedValue({ items: [rule], total: 1, page: 1, pageSize: 20 });
   listTriggers.mockResolvedValue({
     items: [
@@ -154,6 +157,37 @@ describe('AlertsPage', () => {
     });
     expect(listTriggers).toHaveBeenCalledWith({ page: 1, pageSize: 20 });
     expect(listNotifications).toHaveBeenCalledWith({ page: 1, pageSize: 20 });
+  });
+
+  it('renders page chrome, trigger history, and test results in English UI mode', async () => {
+    window.localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, 'en');
+    listRules.mockResolvedValueOnce({
+      items: [rule],
+      total: 1,
+      page: 1,
+      pageSize: 20,
+      ruleSources: { legacyConfigured: 2, legacyEffective: 1 },
+    });
+    render(
+      <UiLanguageProvider>
+        <AlertsPage />
+      </UiLanguageProvider>,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Alert Center' })).toBeInTheDocument();
+    expect(document.title).toBe('Alert Center - DSA');
+    expect(await screen.findByText('Trigger history')).toBeInTheDocument();
+    expect(await screen.findByText('Triggered')).toBeInTheDocument();
+    expect(screen.getByText('Data source')).toBeInTheDocument();
+    expect(await screen.findByText('No notification attempts')).toBeInTheDocument();
+    expect(screen.getByText(/Environment variables define 2 valid rules.*1 are available/)).toBeInTheDocument();
+    expect(screen.queryByText('告警中心')).not.toBeInTheDocument();
+    expect(screen.queryByText('触发历史')).not.toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Test' }));
+
+    expect(await screen.findByText('Test result')).toBeInTheDocument();
+    expect(screen.getByText(/Status: triggered · Triggered: Yes · Observed: 1801/)).toBeInTheDocument();
   });
 
   it('runs a dry-run test and renders only declared response fields', async () => {
