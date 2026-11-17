@@ -15,10 +15,12 @@ from src.config import Config
 from src.services.screening.config import Config as ScreeningRuntimeConfig
 from src.services.screening.filter import check_hard_filters, validate_check_snapshot
 from src.services.screening.strategy import load_all_strategies
+from src.services.screening_i18n import localize_screening_payload
 from src.services.screening_service import ScreeningService, _ensure_screening_enabled
 from src.services.task_queue import TaskStatus as QueueTaskStatus
 from src.services.task_queue import get_task_queue
 from src.storage import DatabaseManager
+from src.ui_language import ui_text
 
 router = APIRouter()
 
@@ -106,13 +108,13 @@ def _screening_task_not_found(task_id: str) -> HTTPException:
     return api_error(
         404,
         "screening_screen_task_not_found",
-        f"选股任务 {task_id} 不存在或已过期",
+        ui_text(f"选股任务 {task_id} 不存在或已过期", f"Screening task {task_id} not found or expired"),
     )
 
 
 @router.get("/status")
 def screening_status(config: Config = Depends(get_config_dep)) -> Dict[str, Any]:
-    return _service(config).status()
+    return localize_screening_payload(_service(config).status())
 
 
 @router.get("/strategies")
@@ -120,7 +122,7 @@ def screening_strategies(
     request: Request,
     config: Config = Depends(get_config_dep),
 ) -> Dict[str, Any]:
-    return _service(config).strategies()
+    return localize_screening_payload(_service(config).strategies())
 
 
 @router.get("/hotspots")
@@ -137,11 +139,13 @@ def screening_hotspots(
         if isinstance(include_details, bool)
         else bool(getattr(include_details, "default", False))
     )
-    return _service(config).hotspots(
-        provider=provider,
-        top=top,
-        refresh=refresh_value,
-        include_details=include_details_value,
+    return localize_screening_payload(
+        _service(config).hotspots(
+            provider=provider,
+            top=top,
+            refresh=refresh_value,
+            include_details=include_details_value,
+    )
     )
 
 
@@ -159,11 +163,13 @@ def screening_hotspot_detail(
         if isinstance(include_search, bool)
         else bool(getattr(include_search, "default", False))
     )
-    return _service(config).hotspot_detail(
-        topic=topic,
-        provider=provider,
-        refresh=refresh_value,
-        include_search=include_search_value,
+    return localize_screening_payload(
+        _service(config).hotspot_detail(
+            topic=topic,
+            provider=provider,
+            refresh=refresh_value,
+            include_search=include_search_value,
+    )
     )
 
 
@@ -238,7 +244,7 @@ def screening_start_screen_task(
         task_id=task.task_id,
         trace_id=task.trace_id or task.task_id,
         status=task.status.value if isinstance(task.status, QueueTaskStatus) else str(task.status),
-        message=task.message or "选股任务已提交",
+        message=localize_screening_payload(task.message or "选股任务已提交"),
         strategy=request.strategy,
         market=request.market,
         max_results=request.max_results,
@@ -257,9 +263,9 @@ def screening_screen_task_status(task_id: str) -> ScreeningScreenTaskStatus:
         trace_id=task.trace_id or task.task_id,
         status=task.status.value if isinstance(task.status, QueueTaskStatus) else str(task.status),
         progress=task.progress,
-        message=task.message,
-        error=task.error,
-        result=result,
+        message=localize_screening_payload(task.message),
+        error=localize_screening_payload(task.error),
+        result=localize_screening_payload(result),
     )
 
 
@@ -270,11 +276,13 @@ def screening_screen(
     config: Config = Depends(get_config_dep),
     db_manager: DatabaseManager = Depends(get_database_manager),
 ) -> Dict[str, Any]:
-    return _service(config, db_manager).screen(
-        strategy=request.strategy,
-        market=request.market,
-        max_results=request.max_results,
-        selection_seed=request.variant_seed,
+    return localize_screening_payload(
+        _service(config, db_manager).screen(
+            strategy=request.strategy,
+            market=request.market,
+            max_results=request.max_results,
+            selection_seed=request.variant_seed,
+    )
     )
 
 
@@ -286,10 +294,12 @@ def screening_history(
     config: Config = Depends(get_config_dep),
     db_manager: DatabaseManager = Depends(get_database_manager),
 ) -> Dict[str, Any]:
-    return _service(config, db_manager).history(
-        limit=limit,
-        strategy=strategy,
-        market=market,
+    return localize_screening_payload(
+        _service(config, db_manager).history(
+            limit=limit,
+            strategy=strategy,
+            market=market,
+    )
     )
 
 
@@ -299,7 +309,7 @@ def screening_history_detail(
     config: Config = Depends(get_config_dep),
     db_manager: DatabaseManager = Depends(get_database_manager),
 ) -> Dict[str, Any]:
-    return _service(config, db_manager).history_detail(run_id)
+    return localize_screening_payload(_service(config, db_manager).history_detail(run_id))
 
 
 @router.get("/source-history")
@@ -308,4 +318,4 @@ def screening_source_history(
     config: Config = Depends(get_config_dep),
     db_manager: DatabaseManager = Depends(get_database_manager),
 ) -> Dict[str, Any]:
-    return _service(config, db_manager).source_history(limit=limit)
+    return localize_screening_payload(_service(config, db_manager).source_history(limit=limit))
