@@ -3,6 +3,7 @@
 name: event_driven
 display_name: 事件驱动
 description: 围绕业绩、政策、并购、订单、产品发布等事件，评估催化强度、兑现概率和风险边界。
+description_en: "Assesses catalyst strength, probability of realization and risk around events such as earnings, policy, M&A, orders and product launches."
 category: framework
 core_rules: [3, 5]
 required_tools:

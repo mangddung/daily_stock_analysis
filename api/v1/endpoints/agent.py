@@ -4,6 +4,7 @@ Agent API endpoints.
 """
 
 import asyncio
+import contextvars
 import json
 import logging
 import uuid
@@ -18,7 +19,9 @@ from api.v1.schemas.system_config import AgentBackendStatusResponse
 from src.config import get_config
 from src.services.agent_chat_session_service import AgentChatSessionService
 from src.services.agent_model_service import list_agent_model_deployments
+from src.report_language import localize_strategy_skill
 from src.storage import ChatSessionStateConflict
+from src.ui_language import is_english_ui, ui_text
 
 # Tool name -> Chinese display name mapping
 TOOL_DISPLAY_NAMES: Dict[str, str] = {
@@ -38,6 +41,25 @@ TOOL_DISPLAY_NAMES: Dict[str, str] = {
     "get_skill_backtest_summary": "获取技能回测概览",
     "get_strategy_backtest_summary": "获取策略回测概览",
     "get_stock_backtest_summary": "获取个股回测数据",
+}
+
+TOOL_DISPLAY_NAMES_EN: Dict[str, str] = {
+    "get_realtime_quote":         "Fetch real-time quote",
+    "get_daily_history":          "Fetch daily history",
+    "get_chip_distribution":      "Analyze chip distribution",
+    "get_analysis_context":       "Fetch analysis context",
+    "get_stock_info":             "Fetch stock fundamentals",
+    "search_stock_news":          "Search stock news",
+    "search_comprehensive_intel": "Search comprehensive intel",
+    "analyze_trend":              "Analyze technical trend",
+    "calculate_ma":               "Calculate moving averages",
+    "get_volume_analysis":        "Analyze volume changes",
+    "analyze_pattern":            "Identify candlestick patterns",
+    "get_market_indices":         "Fetch market indices",
+    "get_sector_rankings":        "Analyze industry sectors",
+    "get_skill_backtest_summary": "Fetch skill backtest summary",
+    "get_strategy_backtest_summary": "Fetch strategy backtest summary",
+    "get_stock_backtest_summary": "Fetch stock backtest data",
 }
 
 logger = logging.getLogger(__name__)
@@ -213,6 +235,13 @@ def _agent_status_response(payload: Dict[str, Any]) -> AgentBackendStatusRespons
     )
 
 
+def _skill_name(skill) -> str:
+    if not is_english_ui():
+        return skill.display_name
+    name = localize_strategy_skill(skill.name, "en")
+    return skill.display_name if name == skill.name else name
+
+
 def _build_skills_response(config) -> SkillsResponse:
     from src.agent.factory import get_skill_manager
     from src.agent.skills.defaults import get_primary_default_skill_id
@@ -231,7 +260,11 @@ def _build_skills_response(config) -> SkillsResponse:
         ),
     )
     skills = [
-        SkillInfo(id=skill.name, name=skill.display_name, description=skill.description)
+        SkillInfo(
+            id=skill.name,
+            name=_skill_name(skill),
+            description=(skill.description_en if is_english_ui() else None) or skill.description,
+        )
         for skill in available_skills
     ]
     return SkillsResponse(
@@ -390,7 +423,7 @@ async def send_chat_to_notification(request: SendChatRequest):
         return {
             "success": False,
             "error": "no_channels",
-            "message": "未配置通知渠道，请先在设置中配置",
+            "message": ui_text("未配置通知渠道，请先在设置中配置", "No notification channel is configured. Please configure one in Settings first."),
         }
     return {"success": True}
 
@@ -550,7 +583,7 @@ async def agent_chat_stream(
         # Enrich tool events with display names
         if event.get("type") in ("tool_start", "tool_done"):
             tool = event.get("tool", "")
-            event["display_name"] = TOOL_DISPLAY_NAMES.get(tool, tool)
+            event["display_name"] = (TOOL_DISPLAY_NAMES_EN if is_english_ui() else TOOL_DISPLAY_NAMES).get(tool, tool)
         asyncio.run_coroutine_threadsafe(queue.put(event), loop)
 
     def run_sync(executor, turn):
@@ -622,12 +655,12 @@ async def agent_chat_stream(
                          "backend": backend_id, "request_id": request_id, "error_code": None}
                 yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
                 return
-            fut = loop.run_in_executor(None, run_sync, executor, turn)
+            fut = loop.run_in_executor(None, contextvars.copy_context().run, run_sync, executor, turn)
             while True:
                 try:
                     event = await asyncio.wait_for(queue.get(), timeout=300.0)
                 except asyncio.TimeoutError:
-                    event = {"type": "error", "message": "分析超时"}
+                    event = {"type": "error", "message": ui_text("分析超时", "Analysis timed out")}
                     yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
                     break
                 yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"

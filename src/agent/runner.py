@@ -46,6 +46,7 @@ from src.agent.stock_scope import StockScope
 from src.llm.usage import should_persist_usage_telemetry
 from src.utils.data_processing import normalize_report_signal_attribution
 from src.storage import persist_llm_usage as _persist_usage
+from src.ui_language import is_english_ui, ui_text
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +82,25 @@ _THINKING_TOOL_LABELS: Dict[str, str] = {
     "get_skill_backtest_summary": "技能回测概览",
     "get_strategy_backtest_summary": "策略回测概览",
     "get_stock_backtest_summary": "个股回测数据",
+}
+
+_THINKING_TOOL_LABELS_EN: Dict[str, str] = {
+    "get_realtime_quote": "quote fetch",
+    "get_daily_history": "daily history fetch",
+    "analyze_trend": "technical indicator analysis",
+    "get_chip_distribution": "chip distribution analysis",
+    "search_stock_news": "news search",
+    "search_comprehensive_intel": "comprehensive intel search",
+    "get_market_indices": "market overview fetch",
+    "get_sector_rankings": "industry sector analysis",
+    "get_analysis_context": "historical analysis context",
+    "get_stock_info": "basic info fetch",
+    "analyze_pattern": "candlestick pattern recognition",
+    "get_volume_analysis": "volume analysis",
+    "calculate_ma": "moving average calculation",
+    "get_skill_backtest_summary": "skill backtest summary",
+    "get_strategy_backtest_summary": "strategy backtest summary",
+    "get_stock_backtest_summary": "stock backtest data",
 }
 
 
@@ -363,7 +383,7 @@ def run_agent_loop(
         A :class:`RunLoopResult` with the final content, stats, and the
         (mutated) messages list.
     """
-    labels = thinking_labels or _THINKING_TOOL_LABELS
+    labels = thinking_labels or (_THINKING_TOOL_LABELS_EN if is_english_ui() else _THINKING_TOOL_LABELS)
     tool_decls = tool_registry.to_openai_tools()
 
     start_time = time.time()
@@ -448,11 +468,11 @@ def run_agent_loop(
         # --- progress: thinking ---
         if progress_callback:
             if not tool_calls_log:
-                thinking_msg = "正在制定分析路径..."
+                thinking_msg = ui_text("正在制定分析路径...", "Planning the analysis path...")
             else:
                 last_tool = tool_calls_log[-1].get("tool", "")
                 label = labels.get(last_tool, last_tool)
-                thinking_msg = f"「{label}」已完成，继续深入分析..."
+                thinking_msg = ui_text(f"「{label}」已完成，继续深入分析...", f"\"{label}\" completed, continuing the analysis...")
             progress_callback(stream_event("thinking", step=step + 1, message=thinking_msg))
 
         # --- LLM call ---
@@ -567,7 +587,7 @@ def run_agent_loop(
                 total_tokens,
             )
             if progress_callback:
-                progress_callback(stream_event("generating", step=step + 1, message="正在生成最终分析..."))
+                progress_callback(stream_event("generating", step=step + 1, message=ui_text("正在生成最终分析...", "Generating the final analysis...")))
 
             final_content = response.content or ""
             is_error = response.provider == "error"

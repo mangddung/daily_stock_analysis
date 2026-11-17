@@ -4,6 +4,7 @@
 name: chan_theory
 display_name: 缠论
 description: 基于缠论笔、线段、中枢结构，判断趋势级别、买卖点与背驰信号。
+description_en: "Uses Chan theory strokes, segments and pivot structures to judge trend level, buy/sell points and divergence signals."
 category: framework
 core_rules: [1, 2, 3, 4]
 required_tools:

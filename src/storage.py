@@ -60,6 +60,7 @@ from sqlalchemy.exc import IntegrityError, OperationalError
 from src.agent.provider_trace import PROVIDER_TRACE_RETENTION_LIMIT
 from src.config import get_config
 from src.schemas.decision_profile import extract_legacy_decision_profile
+from src.ui_language import ui_text
 from src.utils.sniper_points import extract_sniper_points, parse_sniper_value
 
 logger = logging.getLogger(__name__)
@@ -4467,7 +4468,7 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
                     .order_by(ConversationMessage.created_at)
                     .limit(1)
                 ).scalar()
-                title = (first_user_msg or "新对话")[:60]
+                title = (first_user_msg or ui_text("新对话", "New chat"))[:60]
 
                 results.append({
                     "session_id": sid,
