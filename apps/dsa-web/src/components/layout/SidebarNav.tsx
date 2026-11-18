@@ -61,7 +61,11 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed = false, onNav
   );
   const itemActiveClass = 'border-[var(--nav-active-border)] bg-[var(--nav-active-bg)] font-medium text-[hsl(var(--primary))]';
   const itemIconClass = cn(isRail ? 'h-[18px] w-[18px]' : 'h-5 w-5', 'shrink-0');
-  const itemLabelClass = cn('truncate', isRail ? 'text-center' : '');
+  // leading-normal: the item's leading-none line box clips descenders (g, y) under truncate.
+  const itemLabelClass = cn('truncate leading-normal', isRail ? 'text-center' : '');
+  const utilityButtonClass =
+    'flex h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-transparent text-xs font-medium leading-none text-secondary-text transition-colors hover:bg-[var(--nav-hover-bg)] hover:text-foreground';
+  const utilityIconClass = 'h-4 w-4 shrink-0';
 
   return (
     <div className={cn('flex min-h-0 w-full flex-col', isRail ? '' : 'h-full')}>
@@ -126,27 +130,6 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed = false, onNav
 
       </nav>
 
-      <div className="mt-1.5 flex shrink-0 flex-col gap-1.5">
-        <ThemeToggle
-          variant={isRail ? 'rail' : 'nav'}
-          collapsed={collapsed}
-          wrapperClassName="w-full"
-          triggerClassName={itemInteractiveClass}
-          triggerActiveClassName={itemActiveClass}
-          iconClassName={itemIconClass}
-          labelClassName={itemLabelClass}
-        />
-        <UiLanguageToggle
-          variant={isRail ? 'rail' : 'nav'}
-          collapsed={collapsed}
-          wrapperClassName="w-full"
-          triggerClassName={itemInteractiveClass}
-          triggerActiveClassName={itemActiveClass}
-          iconClassName={itemIconClass}
-          labelClassName={itemLabelClass}
-        />
-      </div>
-
       {authEnabled ? (
         <button
           type="button"
@@ -164,6 +147,29 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed = false, onNav
 
       <div className="mt-3 shrink-0 empty:hidden">
         <RuntimeAlertIndicator variant={isRail ? 'rail' : 'drawer'} collapsed={collapsed} />
+      </div>
+
+      {/* Theme / language are preferences, not destinations: keep them visually apart from nav items. */}
+      <div
+        className={cn(
+          'mt-3 flex shrink-0 gap-1 border-t border-[var(--shell-sidebar-border)] pt-3',
+          collapsed ? 'flex-col' : ''
+        )}
+      >
+        <ThemeToggle
+          variant="rail"
+          wrapperClassName="flex-1"
+          triggerClassName={utilityButtonClass}
+          triggerActiveClassName={itemActiveClass}
+          iconClassName={utilityIconClass}
+          labelClassName="sr-only"
+        />
+        <UiLanguageToggle
+          variant="rail"
+          wrapperClassName="flex-1"
+          triggerClassName={utilityButtonClass}
+          iconClassName={utilityIconClass}
+        />
       </div>
 
       <ConfirmDialog

@@ -57,17 +57,19 @@ describe('SidebarNav', () => {
     expect(screen.queryByTestId('chat-completion-badge')).not.toBeInTheDocument();
   });
 
-  it('renders the collapsed theme toggle variant when the sidebar is collapsed', () => {
+  it('renders the theme toggle as a compact utility control below the logout item', () => {
     render(
       <MemoryRouter initialEntries={['/']}>
-        <SidebarNav collapsed />
+        <SidebarNav />
       </MemoryRouter>,
     );
 
     expect(mockThemeToggle).toHaveBeenCalledWith(
-      expect.objectContaining({ variant: 'nav', collapsed: true }),
+      expect.objectContaining({ variant: 'rail', labelClassName: 'sr-only' }),
     );
-    expect(screen.getByRole('button', { name: '切换主题(折叠)' })).toBeInTheDocument();
+    const logout = screen.getByRole('button', { name: '退出' });
+    const theme = screen.getByRole('button', { name: '切换主题' });
+    expect(logout.compareDocumentPosition(theme) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('renders the alerts navigation item and marks it active', () => {

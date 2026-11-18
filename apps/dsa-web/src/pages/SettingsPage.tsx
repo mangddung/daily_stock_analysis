@@ -524,7 +524,7 @@ const SchedulerSettingsCard: React.FC<SchedulerSettingsCardProps> = ({
       description={t('settings.schedulerDescription')}
     >
       <div data-testid="scheduler-settings-card" className="space-y-4">
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(300px,360px)]">
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(300px,360px)]">
           <div className="space-y-4 rounded-2xl border settings-border bg-background/35 px-4 py-4">
                 <label className="flex items-start gap-3">
                   <input
@@ -546,7 +546,7 @@ const SchedulerSettingsCard: React.FC<SchedulerSettingsCardProps> = ({
             </label>
 
             <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <div className="flex items-center gap-2 whitespace-nowrap text-sm font-semibold text-foreground">
                 <Clock className="h-4 w-4" aria-hidden="true" />
                 {t('settings.schedulerTimes')}
               </div>
@@ -1498,6 +1498,7 @@ const SettingsPage: React.FC = () => {
                     <Button
                       type="button"
                       variant={screeningEnabled ? 'settings-secondary' : 'settings-primary'}
+                      className="whitespace-nowrap"
                       onClick={() => void updateScreeningEnabled(!screeningEnabled)}
                       disabled={isSaving || isLoading || isImportingEnv || isUpdatingScreening}
                       isLoading={isUpdatingScreening}

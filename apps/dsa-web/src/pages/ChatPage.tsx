@@ -93,6 +93,8 @@ const ChatPage: React.FC = () => {
   const [skills, setSkills] = useState<SkillInfo[]>([]);
   const [defaultSkillIds, setDefaultSkillIds] = useState<string[]>([]);
   const [showSkillDesc, setShowSkillDesc] = useState<string | null>(null);
+  // Right-align the tooltip when a left-anchored one would overflow the picker panel.
+  const [skillDescAlignRight, setSkillDescAlignRight] = useState(false);
   const [mobileSkillPickerOpen, setMobileSkillPickerOpen] = useState(false);
   const [expandedThinking, setExpandedThinking] = useState<Set<string>>(new Set());
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -1103,7 +1105,9 @@ const ChatPage: React.FC = () => {
         <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden border border-white/6 bg-card/78 glass-card">
           {/* Messages */}
           <ScrollArea
-            className="relative z-10 flex-1"
+            // Inset 1px with matching radius so scrolled messages stay inside the
+            // card's gradient border (.glass-card::before) instead of covering it.
+            className="relative z-10 m-px flex-1 rounded-t-[calc(1rem-1px)]"
             viewportRef={messagesViewportRef}
             onScroll={handleMessagesScroll}
             viewportClassName="space-y-6 p-4 md:p-6"
@@ -1446,7 +1450,13 @@ const ChatPage: React.FC = () => {
                         <label
                           key={s.id}
                           className={`flex items-center gap-1.5 cursor-pointer group relative mt-0.5 ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
-                          onMouseEnter={() => setShowSkillDesc(s.id)}
+                          onMouseEnter={(event) => {
+                            const label = event.currentTarget.getBoundingClientRect();
+                            const panel = event.currentTarget.parentElement?.getBoundingClientRect();
+                            // 256px = .skill-desc-tooltip width (16rem)
+                            setSkillDescAlignRight(Boolean(panel && label.left + 256 > panel.right));
+                            setShowSkillDesc(s.id);
+                          }}
                           onMouseLeave={() => setShowSkillDesc(null)}
                         >
                           <input
@@ -1464,7 +1474,7 @@ const ChatPage: React.FC = () => {
                             {s.name}
                           </span>
                           {showSkillDesc === s.id && s.description && (
-                            <div className="skill-desc-tooltip">
+                            <div className={cn('skill-desc-tooltip', skillDescAlignRight && 'skill-desc-tooltip--right')}>
                               <p className="skill-title">{s.name}</p>
                               <p>{s.description}</p>
                             </div>

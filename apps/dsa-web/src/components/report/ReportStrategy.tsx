@@ -15,35 +15,47 @@ interface StrategyItemProps {
   tone: string;
 }
 
+// Big mono suits a bare price ("97.61", "95.2-97.6"); LLM output is often a full sentence,
+// which wrapped to 4-5 lines in that style, so longer values use regular body text.
+const SHORT_VALUE_MAX_LENGTH = 16;
+
 const StrategyItem: React.FC<StrategyItemProps> = ({
   label,
   value,
   tone,
-}) => (
-  <div className="home-subpanel home-strategy-card p-3" style={{ ['--home-strategy-tone' as string]: `var(${tone})` }}>
-    <div className="flex flex-col">
-      <span className="home-strategy-label mb-0.5 text-xs">{label}</span>
-      <span className="home-strategy-value text-lg font-bold font-mono" style={!value ? { color: 'var(--text-muted-text)' } : undefined}>
-        {value || '—'}
-      </span>
+}) => {
+  const isShort = !value || value.trim().length <= SHORT_VALUE_MAX_LENGTH;
+  return (
+    <div className="home-subpanel home-strategy-card p-3" style={{ ['--home-strategy-tone' as string]: `var(${tone})` }}>
+      <div className="flex flex-col">
+        <span className="home-strategy-label mb-0.5 text-xs">{label}</span>
+        <span
+          className={isShort
+            ? 'home-strategy-value text-lg font-bold font-mono'
+            : 'home-strategy-value text-sm font-medium leading-relaxed'}
+          style={!value ? { color: 'var(--text-muted-text)' } : undefined}
+        >
+          {value || '—'}
+        </span>
+      </div>
+      <div
+        className="absolute bottom-0 left-0 right-0 h-0.5"
+        style={{ background: `linear-gradient(90deg, transparent, var(${tone}), transparent)` }}
+      />
     </div>
-    <div
-      className="absolute bottom-0 left-0 right-0 h-0.5"
-      style={{ background: `linear-gradient(90deg, transparent, var(${tone}), transparent)` }}
-    />
-  </div>
-);
+  );
+};
 
 /**
  * 策略点位区组件 - 终端风格
  */
-export const ReportStrategy: React.FC<ReportStrategyProps> = ({ strategy, language = 'zh' }) => {
+export const ReportStrategy: React.FC<ReportStrategyProps> = ({ strategy }) => {
+  const { language } = useUiLanguage();
   if (!strategy) {
     return null;
   }
 
-  const reportLanguage = normalizeReportLanguage(language);
-  const text = getReportText(reportLanguage);
+  const text = getReportText(language);
 
   const strategyItems = [
     {

@@ -2512,6 +2512,11 @@ textarea {
   animation: fadeIn 0.2s ease-out;
 }
 
+.skill-desc-tooltip--right {
+  left: auto;
+  right: 0;
+}
+
 .skill-desc-tooltip .skill-title {
   font-weight: 500;
   color: hsl(var(--foreground));
