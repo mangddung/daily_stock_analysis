@@ -230,9 +230,11 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',  // 允许公网访问
     port: 5173,       // 默认端口
+    // Docker dev on Windows/macOS bind mounts does not deliver file events; poll instead.
+    watch: process.env.VITE_USE_POLLING === 'true' ? { usePolling: true, interval: 500 } : undefined,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8000',
+        target: process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:8000',
         changeOrigin: true,
       },
     },

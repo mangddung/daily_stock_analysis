@@ -1460,6 +1460,11 @@ def start_api_server(host: str, port: int, config: Config) -> None:
     import uvicorn
 
     probe = socket.socket(socket.AF_INET6 if ":" in host else socket.AF_INET, socket.SOCK_STREAM)
+    # Match uvicorn's bind semantics on POSIX so TIME_WAIT sockets from a just-stopped
+    # server (e.g. a dev auto-restart) are not mistaken for a busy port. Windows'
+    # SO_REUSEADDR would also allow binding a port in active use, so skip it there.
+    if os.name != "nt":
+        probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
         probe.bind((host, port))
     except OSError as exc:

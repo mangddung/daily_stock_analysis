@@ -1,0 +1,68 @@
+# ===================================
+# Daily Stock Analysis - development stack
+# ===================================
+#
+#   docker compose -f docker/docker-compose.dev.yml up --build
+#
+# - backend:  source mounted, restarts on .py changes (watchfiles), http://127.0.0.1:15300
+# - frontend: Vite dev server with HMR, http://127.0.0.1:15301 (proxies /api to backend)
+# - Storage is SQLite under ../data, so there is no db/redis service.
+# - Production stays in docker-compose.yml (code baked into the image).
+
+name: daily-stock-analysis-dev
+
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    env_file:
+      - ../.env
+    environment:
+      - TZ=Asia/Shanghai
+      - WEBUI_HOST=0.0.0.0
+      - API_PORT=8000
+      # Windows/macOS bind mounts do not deliver inotify events.
+      - WATCHFILES_FORCE_POLLING=true
+    # Whole repo mounted so code edits apply without rebuilding; data/logs/reports live in it too.
+    volumes:
+      - ..:/app
+      - ../longbridge_tokens:/home/dsa/.longbridge
+    command:
+      - watchfiles
+      - --filter
+      - python
+      - python main.py --serve-only --host 0.0.0.0 --port 8000
+      - api
+      - src
+      - data_provider
+      - bot
+      - main.py
+    ports:
+      - "127.0.0.1:15300:8000"
+
+  frontend:
+    image: node:20.19.5-bookworm
+    working_dir: /app
+    environment:
+      - VITE_API_PROXY_TARGET=http://backend:8000
+      - VITE_USE_POLLING=true
+    volumes:
+      - ../apps/dsa-web:/app
+      # Keep Linux node_modules out of the host tree.
+      - frontend-node-modules:/app/node_modules
+    # Reinstall only when package-lock.json changed since the last install.
+    command:
+      - sh
+      - -c
+      - >-
+        cmp -s package-lock.json node_modules/.dsa-installed-lock
+        || (npm ci --no-audit --no-fund && cp package-lock.json node_modules/.dsa-installed-lock);
+        exec npm run dev -- --host 0.0.0.0 --port 5173
+    ports:
+      - "127.0.0.1:15301:5173"
+    depends_on:
+      - backend
+
+volumes:
+  frontend-node-modules:
