@@ -1,0 +1,16 @@
+{
+  "_doc": [
+    "Pre/post-market windows that exchange_calendars does not know about.",
+    "start/end are minutes relative to that day's regular open or close (anchor) taken from exchange_calendars,",
+    "so DST, holidays and early closes are applied automatically. Edit only when an exchange changes its rules.",
+    "Markets without an entry show only the regular session (and lunch break)."
+  ],
+  "us": {
+    "pre": {"anchor": "open", "start": -330, "end": 0, "note": "04:00-09:30 America/New_York (Nasdaq / NYSE Arca)"},
+    "post": {"anchor": "close", "start": 0, "end": 240, "note": "16:00-20:00 America/New_York; 13:00-17:00 on early-close days"}
+  },
+  "kr": {
+    "pre": {"anchor": "open", "start": -60, "end": -10, "note": "NXT pre-market 08:00-08:50 Asia/Seoul"},
+    "post": {"anchor": "close", "start": 0, "end": 270, "note": "NXT after-market 15:30-20:00 Asia/Seoul"}
+  }
+}
