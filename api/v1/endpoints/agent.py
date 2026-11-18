@@ -5,6 +5,7 @@ Agent API endpoints.
 
 import asyncio
 import contextvars
+import copy
 import json
 import logging
 import uuid
@@ -105,6 +106,13 @@ class ChatRequest(BaseModel):
         validation_alias=AliasChoices("skills", "strategies"),
     )
     context: Optional[Dict[str, Any]] = None  # Previous analysis context for data reuse
+    # Per-request override: True runs one specialist agent per selected strategy
+    # on shared data (multi/specialist); False keeps the server's
+    # AGENT_ARCH / AGENT_ORCHESTRATOR_MODE.
+    specialist_mode: bool = False
+    # Stock the user picked explicitly in the UI; validated server-side and,
+    # when valid, it becomes this turn's discussion target.
+    target_stock_code: Optional[str] = Field(default=None, max_length=32)
 
     @property
     def effective_skills(self) -> Optional[List[str]]:
@@ -166,11 +174,15 @@ def _prepare_chat_request(request, config, session_id, session_service):
         config, session_id, request.message, request.effective_skills,
         context=_build_agent_chat_context(request, config, None),
         expected_generation=request.session_generation,
+        target_stock_code=request.target_stock_code,
     )
     if resolved.clarification is not None:
         accepted = session_service.commit_user_turn(resolved)
         return None, None, accepted, resolved.clarification
-    executor = _build_executor(config, resolved.skill_selection.effective_skill_ids)
+    executor = _build_executor(
+        _chat_execution_config(config, request.specialist_mode),
+        resolved.skill_selection.effective_skill_ids,
+    )
     turn = executor.prepare_turn(
         message=request.message, session_id=session_id, context=resolved.effective_context,
         selected_skill_ids=resolved.skill_selection.selected_skill_ids_update,
@@ -455,9 +467,23 @@ async def send_chat_to_notification(request: SendChatRequest):
         return {
             "success": False,
             "error": "no_channels",
-            "message": ui_text("未配置通知渠道，请先在设置中配置", "No notification channel is configured. Please configure one in Settings first."),
+            "message": ui_text("未配置通知渠道，请先在设置中配置", "No notification channel is configured. Please configure one in Settings first.", "알림 채널이 설정되지 않았습니다. 먼저 설정에서 채널을 설정하세요."),
         }
     return {"success": True}
+
+
+def _chat_execution_config(config, specialist_mode: bool):
+    """Return a per-request config copy switched to multi/specialist when asked.
+
+    The shared runtime config is never mutated, so the toggle only affects this
+    Chat turn and not home analysis or scheduled runs.
+    """
+    if not specialist_mode:
+        return config
+    request_config = copy.copy(config)
+    request_config.agent_arch = "multi"
+    request_config.agent_orchestrator_mode = "specialist"
+    return request_config
 
 
 def _build_executor(config, skills: Optional[List[str]] = None):

@@ -16,6 +16,7 @@ from typing import List, Optional
 
 from src.agent.agents.base_agent import BaseAgent
 from src.agent.protocols import AgentContext, AgentOpinion, normalize_decision_signal
+from src.agent.skills.defaults import is_skill_agent_name
 from src.report_language import normalize_report_language
 
 logger = logging.getLogger(__name__)
@@ -237,6 +238,13 @@ should sum to 100; all-zero means no effective signal and must not be faked.
             parts.append("")
 
         if self._is_chat_mode(ctx):
+            skill_opinion_count = sum(1 for op in ctx.opinions if is_skill_agent_name(op.agent_name))
+            if skill_opinion_count >= 2:
+                parts.append(
+                    "Several strategy specialists answered independently. Structure the reply as: "
+                    "(1) one short section per strategy with its own signal, confidence and key reasoning, "
+                    "(2) a combined view that states where the strategies agree or conflict and the final call."
+                )
             parts.append(
                 "Answer the user in natural language using the evidence above. "
                 "Do not output JSON unless the user explicitly requests structured data."

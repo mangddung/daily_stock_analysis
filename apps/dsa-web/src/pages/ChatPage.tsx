@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ChevronDown, SlidersHorizontal } from 'lucide-react';
+import { ChevronDown, SlidersHorizontal, X } from 'lucide-react';
+import { StockAutocomplete } from '../components/StockAutocomplete';
 import { cn } from '../utils/cn';
 import { agentApi } from '../api/agent';
 import { systemConfigApi } from '../api/systemConfig';
@@ -243,6 +244,12 @@ const ChatPage: React.FC = () => {
     clearCompletionBadge,
   } = useAgentChatStore();
   const selectedSkillIds = sessionSelectedSkillIds ?? defaultSkillIds;
+  // Per-strategy specialist run only makes sense with 2+ strategies selected.
+  const [specialistMode, setSpecialistMode] = useState(false);
+  const canUseSpecialistMode = selectedSkillIds.length >= 2;
+  // Stock picked explicitly via search; sent as target_stock_code on the next message only.
+  const [stockQuery, setStockQuery] = useState('');
+  const [pickedStock, setPickedStock] = useState<{ code: string; name?: string } | null>(null);
 
   const activeStockCode = activeStockContext?.stock_code ?? null;
 
@@ -590,6 +597,8 @@ const ChatPage: React.FC = () => {
         ...(requestedSkillIds !== null
           ? { skills: normalizeSelectedSkillIds(requestedSkillIds) }
           : {}),
+        ...(specialistMode && usedSkillIds.length >= 2 ? { specialist_mode: true } : {}),
+        ...(pickedStock ? { target_stock_code: pickedStock.code } : {}),
         context: contextForSend ?? undefined,
       };
       await startStream(payload, {
@@ -601,12 +610,13 @@ const ChatPage: React.FC = () => {
           followUpContextRef.current = null;
           setIsFollowUpContextLoading(false);
           setInput('');
+          setPickedStock(null);
           setMobileSkillPickerOpen(false);
           requestScrollToBottom('smooth');
         },
       });
     },
-    [agentAvailable, agentStatus, getSkillNames, input, language, loading, normalizeSelectedSkillIds, requestScrollToBottom, selectedSkillIds, sessionId, sessionSelectedSkillIds, startStream],
+    [agentAvailable, agentStatus, getSkillNames, input, language, loading, normalizeSelectedSkillIds, pickedStock, requestScrollToBottom, selectedSkillIds, sessionId, sessionSelectedSkillIds, specialistMode, startStream],
   );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -1462,10 +1472,61 @@ const ChatPage: React.FC = () => {
                         </label>
                       );
                     })}
+                    {canUseSpecialistMode && (
+                      <label
+                        className="flex items-center gap-1.5 text-sm cursor-pointer group mt-0.5 md:ml-auto"
+                        title={ct('specialistModeHint')}
+                      >
+                        <input
+                          type="checkbox"
+                          name="specialist-mode"
+                          checked={specialistMode}
+                          onChange={(event) => setSpecialistMode(event.target.checked)}
+                          className="chat-skill-checkbox"
+                        />
+                        <span
+                          className={`transition-colors text-sm ${specialistMode ? 'text-primary font-medium' : 'text-secondary-text group-hover:text-foreground'}`}
+                        >
+                          {ct('specialistMode')}
+                        </span>
+                      </label>
+                    )}
                   </div>
                 </div>
               )}
 
+            <div className="flex flex-wrap items-center gap-2">
+              {pickedStock ? (
+                <Badge variant="info" size="sm" className="gap-1.5">
+                  {ct('pickedStockLabel')}: {pickedStock.name ? `${pickedStock.name} · ` : ''}{pickedStock.code.toUpperCase()}
+                  <button
+                    type="button"
+                    onClick={() => setPickedStock(null)}
+                    aria-label={ct('clearPickedStock')}
+                    className="rounded-full opacity-70 transition-opacity hover:opacity-100"
+                  >
+                    <X className="h-3 w-3" aria-hidden="true" />
+                  </button>
+                </Badge>
+              ) : (
+                <div className="w-full sm:w-64">
+                  <StockAutocomplete
+                    value={stockQuery}
+                    onChange={setStockQuery}
+                    onSubmit={(code, name) => {
+                      const trimmed = code.trim();
+                      if (!trimmed) return;
+                      setPickedStock({ code: trimmed, name });
+                      setStockQuery('');
+                    }}
+                    placeholder={ct('pickStockPlaceholder')}
+                    ariaLabel={ct('pickStockPlaceholder')}
+                    disabled={loading || !agentAvailable}
+                    className="h-9"
+                  />
+                </div>
+              )}
+            </div>
             <div className="text-xs text-muted-text" aria-label={t('chat.currentObjectLabel')}>
               {activeStockContext
                 ? t('chat.currentObject', { object: `${activeStockContext.stock_name ? `${activeStockContext.stock_name} · ` : ''}${activeStockContext.stock_code}` })

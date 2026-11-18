@@ -2365,6 +2365,22 @@ class TestDecisionAgentChatMode(unittest.TestCase):
         self.assertIsNone(ctx.get_data("final_dashboard"))
         self.assertEqual(opinion.signal, "buy")
 
+    def test_chat_prompt_asks_per_strategy_then_combined_view(self):
+        from src.agent.agents.decision_agent import DecisionAgent
+        from src.agent.skills.defaults import build_skill_agent_name
+
+        agent = DecisionAgent(tool_registry=MagicMock(), llm_adapter=MagicMock())
+        ctx = AgentContext(query="对比策略", stock_code="600519")
+        ctx.meta["response_mode"] = "chat"
+        ctx.add_opinion(AgentOpinion(agent_name="technical", signal="buy", confidence=0.8, reasoning="趋势偏强"))
+        self.assertNotIn("one short section per strategy", agent.build_user_message(ctx))
+
+        for skill_id in ("bull_trend", "shrink_pullback"):
+            ctx.add_opinion(AgentOpinion(
+                agent_name=build_skill_agent_name(skill_id), signal="hold", confidence=0.6, reasoning="r",
+            ))
+        self.assertIn("one short section per strategy", agent.build_user_message(ctx))
+
     def test_decision_agent_prompt_requires_phase_decision(self):
         from src.agent.agents.decision_agent import DecisionAgent
 

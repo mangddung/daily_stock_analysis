@@ -20,6 +20,10 @@ export function isAbortError(error: unknown): boolean {
 export interface ChatRequest {
   message: string;
   skills?: string[];
+  /** Run one specialist agent per selected strategy on shared data, then synthesize. */
+  specialist_mode?: boolean;
+  /** Stock picked explicitly in the UI; the server validates it and makes it the discussion target. */
+  target_stock_code?: string;
 }
 
 export interface ChatStreamRequest extends ChatRequest {

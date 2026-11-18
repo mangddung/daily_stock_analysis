@@ -312,6 +312,43 @@ def test_agent_chat_inherits_saved_skills_without_rewriting_session_state(tmp_pa
     assert executor.prepare_turn.call_args.kwargs["selected_skill_ids"] is None
 
 
+def test_agent_chat_specialist_mode_overrides_only_request_config(tmp_path: Path) -> None:
+    config = _litellm_config()
+    config.agent_arch, config.agent_orchestrator_mode = "single", "standard"
+    executor = _executor()
+
+    with patch("api.middlewares.auth.is_auth_enabled", return_value=False), \
+         patch("api.v1.endpoints.agent.get_config", return_value=config), \
+         patch("api.v1.endpoints.agent._build_executor", return_value=executor) as build_executor:
+        response = TestClient(create_app(static_dir=tmp_path / "static")).post(
+            "/api/v1/agent/chat",
+            json={"message": "compare", "skills": ["bull_trend", "shrink_pullback"], "specialist_mode": True},
+        )
+
+    assert response.status_code == 200
+    request_config = build_executor.call_args.args[0]
+    assert request_config is not config
+    assert (request_config.agent_arch, request_config.agent_orchestrator_mode) == ("multi", "specialist")
+    assert (config.agent_arch, config.agent_orchestrator_mode) == ("single", "standard")
+
+
+def test_agent_chat_picked_stock_confirms_target_without_code_in_message(tmp_path: Path) -> None:
+    config = _litellm_config()
+    executor = _executor()
+
+    with patch("api.middlewares.auth.is_auth_enabled", return_value=False), \
+         patch("api.v1.endpoints.agent.get_config", return_value=config), \
+         patch("api.v1.endpoints.agent._build_executor", return_value=executor):
+        response = TestClient(create_app(static_dir=tmp_path / "static")).post(
+            "/api/v1/agent/chat",
+            json={"message": "분석해줘", "session_id": "picked-session", "target_stock_code": "csco"},
+        )
+
+    assert response.status_code == 200
+    assert executor.prepare_turn.call_args.kwargs["context"]["stock_code"] == "CSCO"
+    assert response.json()["active_stock_context"]["stock_code"] == "CSCO"
+
+
 def test_agent_chat_all_invalid_skills_inherit_without_clearing_state(tmp_path: Path) -> None:
     db = DatabaseManager(db_url=f"sqlite:///{tmp_path / 'all-invalid.db'}")
     db.save_conversation_user_turn("saved-session", "first", ["technical"])

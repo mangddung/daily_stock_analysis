@@ -10,7 +10,9 @@ from src.agent.factory import normalize_requested_skill_ids
 from src.agent.stock_scope import (
     SWITCH_CLEANUP_KEYS, StockIdentity, StockScope, StockScopeResolution, resolve_stock_scope,
 )
-from src.agent.chat_object_decision import decide_chat_object, validate_chat_identity as _code_identity
+from src.agent.chat_object_decision import (
+    ObjectDecision, ObjectMention, decide_chat_object, validate_chat_identity as _code_identity,
+)
 from src.data.stock_index_loader import get_chat_stock_lookup
 from src.services.stock_list_parser import IndexRegistry, _index_entry_from_row
 from src.storage import ChatSessionStateConflict, DatabaseManager
@@ -186,22 +188,40 @@ class AgentChatSessionService:
         self, config: Any, session_id: str, message: str,
         requested_skill_ids: Optional[List[str]] = None,
         *, context: Optional[Dict[str, Any]] = None, expected_generation: Optional[str] = None,
+        target_stock_code: Optional[str] = None,
     ) -> ResolvedChatTurn:
         generation = self.db.ensure_chat_session_generation(session_id, expected_generation=expected_generation)
         snapshot = self.db.read_chat_session_snapshot(session_id)
         if snapshot["session_generation"] != generation:
             raise ChatSessionStateConflict()
-        return self._resolve_session_turn(config, snapshot, message, requested_skill_ids, context=context)
+        return self._resolve_session_turn(
+            config, snapshot, message, requested_skill_ids, context=context, target_stock_code=target_stock_code,
+        )
 
     def _resolve_session_turn(
         self, config: Any, snapshot: Dict[str, Any], message: str,
         requested_skill_ids: Optional[List[str]], *, context: Optional[Dict[str, Any]],
+        target_stock_code: Optional[str] = None,
     ) -> ResolvedChatTurn:
         skills = self.resolve_skill_selection(config, snapshot["session_id"], requested_skill_ids, snapshot=snapshot)
         registry, lookup = _stock_lookup()
         active = _active_from_snapshot(snapshot, registry, lookup)
         baseline = dict(active) if active else None
-        decision = decide_chat_object(message, _identity(active) if active else None, registry, lookup)
+        if target_stock_code and target_stock_code.strip():
+            # The user picked the stock explicitly in the UI: same authority as
+            # typing its code, so it is validated like a code mention and wins
+            # over free-text object detection (which only parses Chinese word order).
+            try:
+                picked = _code_identity(target_stock_code.strip(), registry, lookup)
+                decision = ObjectDecision(
+                    "confirm",
+                    target=ObjectMention(0, 0, target_stock_code.strip(), "code", (picked,)),
+                    changes_target=True,
+                )
+            except ValueError:
+                decision = ObjectDecision("clarify", changes_target=True)
+        else:
+            decision = decide_chat_object(message, _identity(active) if active else None, registry, lookup)
         compare = decision.kind == "compare"
         confirm = False
         clarification = None
