@@ -9,11 +9,13 @@ import type {
   AnalysisReport,
   MarketReviewAccepted,
   MarketReviewRequest,
+  TaskInfo,
   TaskStatus,
   TaskListResponse,
 } from '../types/analysis';
 import type { RunFlowSnapshot } from '../types/runFlow';
 import { serializeMarketReviewRegions } from '../utils/marketReviewRegion';
+import type { UiLanguage } from '../i18n/uiText';
 
 // ============ API Interfaces ============
 
@@ -180,10 +182,22 @@ export const analysisApi = {
   /**
    * Get the SSE stream URL.
    */
-  getTaskStreamUrl: (): string => {
+  /**
+   * Cancel a task: pending ones stop at once, running stock analysis stops at its
+   * next checkpoint (status becomes cancel_requested until then).
+   */
+  cancelTask: async (taskId: string): Promise<TaskInfo> => {
+    const response = await apiClient.post<Record<string, unknown>>(
+      `/api/v1/analysis/tasks/${encodeURIComponent(taskId)}/cancel`,
+    );
+    return toCamelCase<TaskInfo>(response.data);
+  },
+
+  getTaskStreamUrl: (language: UiLanguage): string => {
     // Read API base URL from the shared client.
     const baseUrl = apiClient.defaults.baseURL || '';
-    return `${baseUrl}/api/v1/analysis/tasks/stream`;
+    // EventSource cannot send the UI language header, so pass it as a query param.
+    return `${baseUrl}/api/v1/analysis/tasks/stream?ui_language=${encodeURIComponent(language)}`;
   },
 };
 

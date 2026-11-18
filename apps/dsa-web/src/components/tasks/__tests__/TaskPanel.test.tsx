@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { TaskPanel } from '../TaskPanel';
+import { analysisApi } from '../../../api/analysis';
 import type { TaskInfo } from '../../../types/analysis';
 
 const baseTask: TaskInfo = {
@@ -202,5 +203,22 @@ describe('TaskPanel', () => {
     );
 
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it('cancels a cancellable task and hides the button while cancel is requested', () => {
+    const cancelTask = vi.spyOn(analysisApi, 'cancelTask').mockResolvedValue({ ...baseTask, status: 'cancel_requested' });
+    const { rerender } = render(<TaskPanel tasks={[{ ...baseTask, cancellable: true }]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '取消 贵州茅台 的分析任务' }));
+    expect(cancelTask).toHaveBeenCalledWith('task-1');
+
+    rerender(<TaskPanel tasks={[{ ...baseTask, status: 'cancel_requested', cancellable: false }]} />);
+    expect(screen.queryByRole('button', { name: '取消 贵州茅台 的分析任务' })).not.toBeInTheDocument();
+    cancelTask.mockRestore();
+  });
+
+  it('does not offer cancel for tasks the backend marks non-cancellable', () => {
+    render(<TaskPanel tasks={[{ ...baseTask, stockCode: 'market_review', stockName: '大盘复盘' }]} />);
+    expect(screen.queryByRole('button', { name: /取消 .* 的分析任务/ })).not.toBeInTheDocument();
   });
 });

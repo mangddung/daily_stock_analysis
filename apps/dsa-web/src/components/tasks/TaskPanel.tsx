@@ -1,6 +1,7 @@
 import type React from 'react';
 import { useId, useState } from 'react';
-import { ChevronDown, RefreshCw, Workflow } from 'lucide-react';
+import { ChevronDown, RefreshCw, Workflow, X } from 'lucide-react';
+import { analysisApi } from '../../api/analysis';
 import { Badge, Button, Card, StatusDot, Tooltip } from '../common';
 import { DashboardPanelHeader } from '../dashboard';
 import type { TaskInfo } from '../../types/analysis';
@@ -35,6 +36,18 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onOpenRunFlow }) => {
   const traceId = (task.traceId || '').trim();
   const requestedPhaseLabel = getRequestedPhaseLabel(task.analysisPhase, language);
   const requestedPhaseVariant = task.analysisPhase === 'auto' ? 'default' : 'info';
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  // The task stream delivers the resulting status; this only blocks double clicks.
+  const handleCancel = async () => {
+    setIsCancelling(true);
+    try {
+      await analysisApi.cancelTask(task.taskId);
+    } catch (error) {
+      console.warn('Task cancel failed', error);
+      setIsCancelling(false);
+    }
+  };
 
   return (
     <div className="home-subpanel grid min-w-0 gap-2.5 px-3 py-2.5" data-testid="task-panel-item">
@@ -80,6 +93,28 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onOpenRunFlow }) => {
                   })}
                 >
                   <Workflow className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </span>
+            </Tooltip>
+          ) : null}
+          {task.cancellable && !isCancelRequested ? (
+            <Tooltip content={t('taskPanel.cancel')}>
+              <span className="inline-flex">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xsm"
+                  className="h-8 w-8 px-0 text-muted-text hover:text-danger"
+                  disabled={isCancelling}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void handleCancel();
+                  }}
+                  aria-label={t('taskPanel.cancelAria', {
+                    stock: task.stockName || task.stockCode,
+                  })}
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </span>
             </Tooltip>

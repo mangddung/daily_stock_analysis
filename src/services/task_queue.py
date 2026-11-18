@@ -136,7 +136,15 @@ class TaskInfo:
     # parser 来源的可选资产类型（``index``/``stock``/``None``）；SSE 与任务列表
     # 从这里透传，不得在消费端重新猜测。
     asset_type: Optional[str] = None
-    
+
+    @property
+    def cancellable(self) -> bool:
+        """Pending tasks can always be cancelled; running ones only for stock analysis
+        (submitted with a dedupe key), which passes progress checkpoints."""
+        if self.status == TaskStatus.PENDING:
+            return True
+        return self.status == TaskStatus.PROCESSING and self.dedupe_key is not None
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert task info into an API-friendly dictionary."""
         payload = {
@@ -156,6 +164,7 @@ class TaskInfo:
             "original_query": self.original_query,
             "selection_source": self.selection_source,
             "skills": self.skills,
+            "cancellable": self.cancellable,
         }
         if self.region is not None:
             payload["region"] = self.region
@@ -192,6 +201,15 @@ class TaskInfo:
             analysis_target=self.analysis_target,
             asset_type=self.asset_type,
         )
+
+
+class TaskCancelledError(BaseException):
+    """Raised from a progress checkpoint when the user cancelled a running task.
+
+    Derives from BaseException on purpose: the analysis pipeline wraps stages in
+    broad ``except Exception`` handlers (and swallows progress-callback errors),
+    which must not turn a cancellation into a silent "continue" or a failure.
+    """
 
 
 class DuplicateTaskError(Exception):
@@ -753,8 +771,67 @@ class AnalysisTaskQueue:
         self._broadcast_event(event_type, task_snapshot.to_dict())
         return task_snapshot
     
+    def cancel_task(self, task_id: str) -> Optional[TaskInfo]:
+        """
+        Cancel a task. Returns the task snapshot, or None when the task is unknown.
+
+        - Pending: removed from the executor queue and marked cancelled at once.
+        - Processing stock analysis: marked cancel_requested; the worker stops at the
+          next progress checkpoint, before the report is saved or notified.
+        - Running generic background tasks have no checkpoints and terminal tasks
+          are final, so both are returned unchanged (caller checks the status).
+        """
+        with self._data_lock:
+            task = self._tasks.get(task_id)
+            if not task:
+                return None
+
+            if task.status == TaskStatus.PENDING:
+                future = self._futures.get(task_id)
+                if future is not None and future.cancel():
+                    self._finish_cancelled_locked(task)
+                    snapshot = task.copy()
+                    event_type = "task_cancelled"
+                elif task.dedupe_key is not None:
+                    # Worker already picked it up; _execute_task sees the request on start.
+                    task.status = TaskStatus.CANCEL_REQUESTED
+                    task.message = "正在取消任务"
+                    snapshot = task.copy()
+                    event_type = "task_progress"
+                else:
+                    return task.copy()
+            elif task.status == TaskStatus.PROCESSING and task.dedupe_key is not None:
+                # Only stock analysis tasks (submitted with a dedupe key) report progress.
+                task.status = TaskStatus.CANCEL_REQUESTED
+                task.message = "正在取消任务"
+                snapshot = task.copy()
+                event_type = "task_progress"
+            else:
+                return task.copy()
+
+        logger.info(f"[TaskQueue] 任务取消: {task_id} -> {snapshot.status.value}")
+        self._broadcast_event(event_type, snapshot.to_dict())
+        return snapshot
+
+    def _is_cancel_requested(self, task_id: str) -> bool:
+        with self._data_lock:
+            task = self._tasks.get(task_id)
+            return bool(task and task.status == TaskStatus.CANCEL_REQUESTED)
+
+    def _finish_cancelled_locked(self, task: TaskInfo) -> None:
+        """Mark a task cancelled and release its dedupe slot. Caller holds _data_lock."""
+        task.status = TaskStatus.CANCELLED
+        task.completed_at = datetime.now()
+        task.message = "任务已取消"
+        dedupe_key = task.dedupe_key or _dedupe_task_key(
+            task.stock_code,
+            getattr(task, "analysis_target", None),
+        )
+        if self._analyzing_stocks.get(dedupe_key) == task.task_id:
+            del self._analyzing_stocks[dedupe_key]
+
     # ========== 任务执行 ==========
-    
+
     def _execute_task(
         self,
         task_id: str,
@@ -788,11 +865,19 @@ class AnalysisTaskQueue:
             analysis_phase = task.analysis_phase
             query_source = task.query_source or "api"
             portfolio_context = dict(task.portfolio_context) if isinstance(task.portfolio_context, dict) else None
-            task.status = TaskStatus.PROCESSING
-            task.started_at = datetime.now()
-            task.message = "正在分析中..."
-            task.progress = 10
-        
+            cancelled_before_start = task.status == TaskStatus.CANCEL_REQUESTED
+            if cancelled_before_start:
+                self._finish_cancelled_locked(task)
+            else:
+                task.status = TaskStatus.PROCESSING
+                task.started_at = datetime.now()
+                task.message = "正在分析中..."
+                task.progress = 10
+
+        if cancelled_before_start:
+            self._broadcast_event("task_cancelled", task.to_dict())
+            return None
+
         self._broadcast_event("task_started", task.to_dict())
         
         try:
@@ -803,6 +888,9 @@ class AnalysisTaskQueue:
             service = AnalysisService()
 
             def _on_progress(progress: int, message: str) -> None:
+                # Progress updates double as cancellation checkpoints.
+                if self._is_cancel_requested(task_id):
+                    raise TaskCancelledError(task_id)
                 self.update_task_progress(task_id, progress, message)
 
             diag_token = None
@@ -863,7 +951,20 @@ class AnalysisTaskQueue:
             else:
                 # 分析返回空结果
                 raise Exception(service.last_error or "分析返回空结果")
-                
+
+        except TaskCancelledError:
+            if "diag_token" in locals():
+                reset_run_diagnostic_context(diag_token)
+            logger.info(f"[TaskQueue] 任务已取消: {task_id} ({stock_code})")
+            with self._data_lock:
+                task = self._tasks.get(task_id)
+                if task:
+                    self._finish_cancelled_locked(task)
+            if task:
+                self._broadcast_event("task_cancelled", task.to_dict())
+            self._cleanup_old_tasks()
+            return None
+
         except Exception as e:
             if "diag_token" in locals():
                 reset_run_diagnostic_context(diag_token)

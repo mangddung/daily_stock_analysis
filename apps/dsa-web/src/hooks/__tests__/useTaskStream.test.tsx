@@ -1,5 +1,7 @@
-import { cleanup, renderHook, waitFor } from '@testing-library/react';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { UiLanguageProvider, useUiLanguage } from '../../contexts/UiLanguageContext';
+import { UI_LANGUAGE_STORAGE_KEY } from '../../utils/uiLanguage';
 import { useTaskStream } from '../useTaskStream';
 
 const { getTaskStreamUrl } = vi.hoisted(() => ({
@@ -106,6 +108,7 @@ describe('useTaskStream', () => {
           created_at: '2026-03-29T08:00:00Z',
           skills: ['growth_quality'],
           region: 'jp,kr',
+          cancellable: true,
           flow_event: {
             id: 'flow-1',
             timestamp: '2026-03-29T08:00:01Z',
@@ -146,6 +149,7 @@ describe('useTaskStream', () => {
       skills: ['growth_quality'],
       region: 'jp,kr',
       assetType: 'index',
+      cancellable: true,
     });
     expect(onTaskFlowEvent).toHaveBeenCalledWith(
       expect.objectContaining({ taskId: 'task-1' }),
@@ -230,5 +234,23 @@ describe('useTaskStream', () => {
 
     expect(eventSourceInstances).toHaveLength(2);
     expect(getTaskStreamUrl).toHaveBeenCalledTimes(2);
+  });
+
+  it('reopens the shared stream with the new UI language when it changes', async () => {
+    window.localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, 'ko');
+    const { result } = renderHook(() => {
+      useTaskStream({ enabled: true });
+      return useUiLanguage();
+    }, { wrapper: UiLanguageProvider });
+
+    await waitFor(() => expect(eventSourceInstances).toHaveLength(1));
+    expect(getTaskStreamUrl).toHaveBeenLastCalledWith('ko');
+
+    act(() => result.current.setLanguage('en'));
+
+    await waitFor(() => expect(eventSourceInstances).toHaveLength(2));
+    expect(eventSourceInstances[0].close).toHaveBeenCalledTimes(1);
+    expect(getTaskStreamUrl).toHaveBeenLastCalledWith('en');
+    window.localStorage.removeItem(UI_LANGUAGE_STORAGE_KEY);
   });
 });

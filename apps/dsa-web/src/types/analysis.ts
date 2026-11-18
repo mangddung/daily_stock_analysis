@@ -507,6 +507,8 @@ export interface TaskInfo {
   skills?: string[];
   region?: string;
   assetType?: 'stock' | 'index';
+  /** Backend says this task can be cancelled now (pending, or running stock analysis). */
+  cancellable?: boolean;
 }
 
 /** Task list response */

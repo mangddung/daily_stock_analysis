@@ -411,7 +411,8 @@ class TaskInfo(BaseModel):
         None,
         description="parser 来源的可选资产类型（stock/index）；由已提交的 analysis_target 透传，旧客户端可缺省",
     )
-    
+    cancellable: bool = Field(False, description="当前是否可以取消（排队中，或正在执行的个股分析）")
+
     model_config = ConfigDict(json_schema_extra={
         "example": {
             "task_id": "abc123def456",

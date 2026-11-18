@@ -3,6 +3,9 @@ import { analysisApi } from '../api/analysis';
 import { toCamelCase } from '../api/utils';
 import type { TaskInfo } from '../types/analysis';
 import type { RunFlowEvent } from '../types/runFlow';
+import type { UiLanguage } from '../i18n/uiText';
+import { useUiLanguage } from '../contexts/UiLanguageContext';
+import { getActiveUiLanguage } from '../utils/uiLanguage';
 
 /**
  * SSE event types.
@@ -14,6 +17,7 @@ export type SSEEventType =
   | 'task_progress'
   | 'task_completed'
   | 'task_failed'
+  | 'task_cancelled'
   | 'heartbeat';
 
 /**
@@ -40,6 +44,8 @@ export interface UseTaskStreamOptions {
   onTaskProgress?: (task: TaskInfo) => void;
   /** Task failed callback */
   onTaskFailed?: (task: TaskInfo) => void;
+  /** Task cancelled callback */
+  onTaskCancelled?: (task: TaskInfo) => void;
   /** Incremental run-flow event callback carried by task_progress */
   onTaskFlowEvent?: (task: TaskInfo, event: RunFlowEvent) => void;
   /** Connected callback */
@@ -73,6 +79,7 @@ type TaskStreamCallbacks = Pick<
   | 'onTaskCompleted'
   | 'onTaskProgress'
   | 'onTaskFailed'
+  | 'onTaskCancelled'
   | 'onTaskFlowEvent'
   | 'onConnected'
   | 'onError'
@@ -93,6 +100,8 @@ type TaskStreamSubscriber = {
 let sharedEventSource: EventSource | null = null;
 let sharedReconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 let sharedConnected = false;
+// UI language sent to the backend on the shared stream (EventSource cannot send headers).
+let sharedLanguage: UiLanguage = getActiveUiLanguage();
 let nextSubscriberId = 1;
 const subscribers = new Map<number, TaskStreamSubscriber>();
 
@@ -115,6 +124,7 @@ const toTaskInfo = (data: Record<string, unknown>): TaskInfo => {
     analysisPhase: data.analysis_phase as TaskInfo['analysisPhase'],
     skills: Array.isArray(data.skills) ? data.skills.map(String) : undefined,
     assetType: data.asset_type as TaskInfo['assetType'] | undefined,
+    cancellable: data.cancellable === true,
   };
 
   if (typeof data.trace_id === 'string' && data.trace_id.trim()) {
@@ -193,7 +203,7 @@ function connectSharedStream() {
     return;
   }
 
-  const url = analysisApi.getTaskStreamUrl();
+  const url = analysisApi.getTaskStreamUrl(sharedLanguage);
   const eventSource = new window.EventSource(url, { withCredentials: true });
   sharedEventSource = eventSource;
 
@@ -242,6 +252,13 @@ function connectSharedStream() {
     }
   });
 
+  eventSource.addEventListener('task_cancelled', (e) => {
+    const payload = parseEventData((e as MessageEvent<string>).data);
+    if (payload) {
+      forEachSubscriber((callbacks) => callbacks.onTaskCancelled?.(payload.task));
+    }
+  });
+
   eventSource.addEventListener('heartbeat', () => {
     // Optional place to record the latest heartbeat timestamp.
   });
@@ -272,6 +289,7 @@ export function useTaskStream(options: UseTaskStreamOptions = {}): UseTaskStream
     onTaskCompleted,
     onTaskProgress,
     onTaskFailed,
+    onTaskCancelled,
     onTaskFlowEvent,
     onConnected,
     onError,
@@ -280,6 +298,7 @@ export function useTaskStream(options: UseTaskStreamOptions = {}): UseTaskStream
     enabled = true,
   } = options;
 
+  const { language } = useUiLanguage();
   const [isConnected, setIsConnected] = useState(false);
   const subscriberIdRef = useRef<number | null>(null);
   const connectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -291,6 +310,7 @@ export function useTaskStream(options: UseTaskStreamOptions = {}): UseTaskStream
     onTaskCompleted,
     onTaskProgress,
     onTaskFailed,
+    onTaskCancelled,
     onTaskFlowEvent,
     onConnected,
     onError,
@@ -304,6 +324,7 @@ export function useTaskStream(options: UseTaskStreamOptions = {}): UseTaskStream
       onTaskCompleted,
       onTaskProgress,
       onTaskFailed,
+      onTaskCancelled,
       onTaskFlowEvent,
       onConnected,
       onError,
@@ -340,6 +361,19 @@ export function useTaskStream(options: UseTaskStreamOptions = {}): UseTaskStream
     }
     reconnectSharedStream();
   }, [autoReconnect, reconnectDelay]);
+
+  // Reopen the shared stream when the UI language changes so server-generated
+  // progress text follows it. Declared before the connect effect so the first
+  // connection already uses the current language.
+  useEffect(() => {
+    if (!enabled || language === sharedLanguage) {
+      return;
+    }
+    sharedLanguage = language;
+    if (sharedEventSource) {
+      reconnectSharedStream();
+    }
+  }, [enabled, language]);
 
   // Connect or disconnect when the hook is enabled or disabled.
   useEffect(() => {

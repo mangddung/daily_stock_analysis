@@ -27,7 +27,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Union, Dict, Any
 
-from src.ui_language import ui_text
+from src.ui_language import set_ui_language, ui_text
+from src.services.task_message_i18n import localize_task_fields, localize_task_text
 from fastapi import APIRouter, HTTPException, Depends, Query, Body
 from fastapi.responses import JSONResponse, StreamingResponse
 
@@ -542,7 +543,7 @@ def _handle_async_analysis_batch(
         dup = duplicates[0]
         error_response = DuplicateTaskErrorResponse(
             error="duplicate_task",
-            message=dup.message,
+            message=localize_task_text(dup.message),
             stock_code=dup.stock_code,
             existing_task_id=dup.existing_task_id,
         )
@@ -762,36 +763,74 @@ def get_task_list(
     stats = task_queue.get_task_stats()
     
     # 转换为 Schema
-    task_infos = [
-        TaskInfo(
-            task_id=t.task_id,
-            trace_id=_get_task_trace_id(t),
-            stock_code=t.stock_code,
-            stock_name=t.stock_name,
-            status=t.status.value,
-            progress=t.progress,
-            message=t.message,
-            report_type=t.report_type,
-            created_at=t.created_at.isoformat(),
-            started_at=t.started_at.isoformat() if t.started_at else None,
-            completed_at=t.completed_at.isoformat() if t.completed_at else None,
-            error=t.error,
-            original_query=t.original_query,
-            selection_source=t.selection_source,
-            analysis_phase=t.analysis_phase,
-            skills=getattr(t, "skills", None),
-            region=t.region,
-            asset_type=_task_asset_type(t),
-        )
-        for t in all_tasks
-    ]
-    
+    task_infos = [_to_task_info_schema(t) for t in all_tasks]
+
     return TaskListResponse(
         total=stats["total"],
         pending=stats["pending"],
         processing=stats["processing"],
         tasks=task_infos,
     )
+
+
+def _to_task_info_schema(t) -> TaskInfo:
+    return TaskInfo(
+        task_id=t.task_id,
+        trace_id=_get_task_trace_id(t),
+        stock_code=t.stock_code,
+        stock_name=localize_task_text(t.stock_name),
+        status=t.status.value,
+        progress=t.progress,
+        message=localize_task_text(t.message),
+        report_type=t.report_type,
+        created_at=t.created_at.isoformat(),
+        started_at=t.started_at.isoformat() if t.started_at else None,
+        completed_at=t.completed_at.isoformat() if t.completed_at else None,
+        error=localize_task_text(t.error),
+        original_query=t.original_query,
+        selection_source=t.selection_source,
+        analysis_phase=t.analysis_phase,
+        skills=getattr(t, "skills", None),
+        region=t.region,
+        asset_type=_task_asset_type(t),
+        cancellable=bool(getattr(t, "cancellable", False)),
+    )
+
+
+# ============================================================
+# POST /tasks/{task_id}/cancel - 取消任务
+# ============================================================
+
+@router.post(
+    "/tasks/{task_id}/cancel",
+    response_model=TaskInfo,
+    responses={
+        200: {"description": "已取消，或已请求取消（执行中的任务在下一个检查点停止）"},
+        404: {"description": "任务不存在", "model": ErrorResponse},
+        409: {"description": "任务已结束或无法取消", "model": ErrorResponse},
+    },
+    summary="取消分析任务",
+    description="排队中的任务立即取消；执行中的个股分析在保存报告和发送通知前停止。",
+)
+def cancel_task(task_id: str) -> TaskInfo:
+    task = get_task_queue().cancel_task(task_id)
+    if task is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": "not_found",
+                "message": ui_text(f"任务 {task_id} 不存在", f"Task {task_id} not found", f"작업 {task_id}을(를) 찾을 수 없습니다"),
+            },
+        )
+    if task.status not in (TaskStatusEnum.CANCELLED, TaskStatusEnum.CANCEL_REQUESTED):
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": "task_not_cancellable",
+                "message": ui_text("该任务已结束或无法取消", "This task has finished or cannot be cancelled", "이미 끝났거나 취소할 수 없는 작업입니다"),
+            },
+        )
+    return _to_task_info_schema(task)
 
 
 # ============================================================
@@ -806,7 +845,7 @@ def get_task_list(
     summary="任务状态 SSE 流",
     description="通过 Server-Sent Events 实时推送任务状态变化"
 )
-async def task_stream():
+async def task_stream(ui_language: Optional[str] = None):
     """
     SSE 任务状态流
     
@@ -823,6 +862,9 @@ async def task_stream():
         StreamingResponse: SSE 事件流
     """
     async def event_generator():
+        # EventSource cannot send headers; the web client passes ?ui_language= instead.
+        if ui_language:
+            set_ui_language(ui_language)
         task_queue = get_task_queue()
         event_queue: asyncio.Queue = asyncio.Queue()
         
@@ -876,7 +918,7 @@ def _format_sse_event(event_type: str, data: Dict[str, Any]) -> str:
     Returns:
         SSE 格式字符串
     """
-    return f"event: {event_type}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+    return f"event: {event_type}\ndata: {json.dumps(localize_task_fields(data), ensure_ascii=False)}\n\n"
 
 
 def _load_history_run_flow_by_query_id(
@@ -1218,8 +1260,8 @@ def get_analysis_status(task_id: str) -> TaskStatus:
             market_review_report=market_review_report,
             market_review_payload=market_review_payload,
             region=task.region,
-            error=task.error,
-            stock_name=task.stock_name,
+            error=localize_task_text(task.error),
+            stock_name=localize_task_text(task.stock_name),
             original_query=task.original_query,
             selection_source=task.selection_source,
             analysis_phase=task.analysis_phase,
