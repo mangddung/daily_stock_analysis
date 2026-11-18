@@ -944,7 +944,7 @@ class ScreeningService:
                 status_code=404,
                 detail={
                     "error": "screening_run_not_found",
-                    "message": ui_text(f"选股运行 {run_id} 不存在。", f"Screening run {run_id} does not exist."),
+                    "message": ui_text(f"选股运行 {run_id} 不存在。", f"Screening run {run_id} does not exist.", f"종목 발굴 실행 {run_id}이(가) 존재하지 않습니다."),
                 },
             )
         return {"enabled": True, **run}
@@ -964,6 +964,7 @@ class ScreeningService:
                     "message": ui_text(
                         "DSA 数据库未注入，无法读取选股运行历史。",
                         "The DSA database is not injected, so screening run history cannot be read.",
+                        "DSA 데이터베이스가 주입되지 않아 종목 발굴 실행 기록을 읽을 수 없습니다.",
                     ),
                 },
             )
@@ -1127,7 +1128,7 @@ class ScreeningService:
         if not topic_text:
             raise HTTPException(
                 status_code=400,
-                detail={"error": "screening_hotspot_topic_required", "message": ui_text("热点题材名称不能为空。", "Hotspot topic name is required.")},
+                detail={"error": "screening_hotspot_topic_required", "message": ui_text("热点题材名称不能为空。", "Hotspot topic name is required.", "핫 테마 이름을 입력해야 합니다.")},
             )
         provider_name, provider_arg = _resolve_hotspot_provider(provider)
         if not isinstance(provider_arg, DsaEastMoneyHotspotProvider):
@@ -1246,14 +1247,14 @@ class ScreeningService:
         except (TypeError, KeyError) as exc:
             raise HTTPException(
                 status_code=422,
-                detail={"error": "screening_invalid_input", "message": ui_text(f"Screening 参数非法：{exc}", f"Invalid screening parameters: {exc}")},
+                detail={"error": "screening_invalid_input", "message": ui_text(f"Screening 参数非法：{exc}", f"Invalid screening parameters: {exc}", f"종목 발굴 파라미터가 올바르지 않습니다: {exc}")},
             ) from exc
         except HTTPException:
             raise
         except Exception as exc:
             raise HTTPException(
                 status_code=424,
-                detail={"error": "screening_screen_failed", "message": ui_text(f"Screening 选股运行失败：{exc}", f"Screening run failed: {exc}")},
+                detail={"error": "screening_screen_failed", "message": ui_text(f"Screening 选股运行失败：{exc}", f"Screening run failed: {exc}", f"종목 발굴 실행 실패: {exc}")},
             ) from exc
 
         raw_data = _to_plain(raw)
@@ -1520,6 +1521,7 @@ def _ensure_screening_available_for_use() -> None:
         ui_text(
             "选股功能初始化失败，请检查策略文件、依赖和服务端日志。",
             "Screening failed to initialize; check strategy files, dependencies and server logs.",
+            "종목 발굴 초기화에 실패했습니다. 전략 파일, 의존성, 서버 로그를 확인하세요.",
         ),
         diagnostics=normalized_diagnostics,
     )
@@ -1537,6 +1539,7 @@ def _include_screening_diagnostic_suffix(
         ui_text(
             "请检查后端日志、策略资源和基础数据依赖。",
             "Check backend logs, strategy resources and base data dependencies.",
+            "백엔드 로그, 전략 리소스, 기본 데이터 의존성을 확인하세요.",
         ),
     )
     return normalized
@@ -1584,7 +1587,7 @@ def _call_screening_status() -> Dict[str, Any]:
     except Exception as exc:
         diagnostics = _log_unexpected_screening_exception("strategy_load", exc)
         raise _screening_unavailable_exception(
-            ui_text(f"选股功能状态检查失败：{exc}", f"Screening status check failed: {exc}"),
+            ui_text(f"选股功能状态检查失败：{exc}", f"Screening status check failed: {exc}", f"종목 발굴 상태 점검 실패: {exc}"),
             diagnostics=diagnostics,
         ) from exc
     return {
@@ -1631,7 +1634,7 @@ def _list_strategies() -> List[Dict[str, Any]]:
     if not isinstance(raw, list):
         raise HTTPException(
             status_code=424,
-            detail={"error": "screening_invalid_result", "message": ui_text("选股策略列表结构非法。", "The screening strategy list is malformed.")},
+            detail={"error": "screening_invalid_result", "message": ui_text("选股策略列表结构非法。", "The screening strategy list is malformed.", "종목 발굴 전략 목록의 형식이 올바르지 않습니다.")},
         )
 
     normalized: List[Dict[str, Any]] = []
@@ -3845,6 +3848,8 @@ def _ensure_supported_market(market: str) -> None:
                     f"（支持市场：{', '.join(map(str, normalized)) or '未知'}）。",
                     f"Market {market} is not supported by screening "
                     f"(supported markets: {', '.join(map(str, normalized)) or 'unknown'}).",
+                    f"시장 {market}은(는) 종목 발굴을 지원하지 않습니다"
+                    f"(지원 시장: {', '.join(map(str, normalized)) or '알 수 없음'}).",
                 ),
             },
         )

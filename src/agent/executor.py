@@ -468,6 +468,13 @@ def _build_language_section(report_language: str, *, chat_mode: bool = False) ->
 - Reply in English.
 - If you output JSON, keep the keys unchanged and write every human-readable value in English.
 """
+        if normalized == "ko":
+            return """
+## Output Language
+
+- Reply in Korean (한국어).
+- If you output JSON, keep the keys unchanged and write every human-readable value in Korean.
+"""
         return """
 ## 输出语言
 
@@ -483,6 +490,17 @@ def _build_language_section(report_language: str, *, chat_mode: bool = False) ->
 - `decision_type` must remain `buy|hold|sell`.
 - All human-readable JSON values must be written in English.
 - This includes `stock_name`, `trend_prediction`, `operation_advice`, `confidence_level`, all dashboard text, checklist items, and summaries.
+"""
+
+    if normalized == "ko":
+        return """
+## Output Language
+
+- Keep every JSON key unchanged.
+- `decision_type` must remain `buy|hold|sell`.
+- All human-readable JSON values must be written in Korean (한국어).
+- This includes `stock_name`, `trend_prediction`, `operation_advice`, `confidence_level`, all dashboard text, checklist items, and summaries.
+- Use the common Korean or original listed company name when confident; do not invent one.
 """
 
     return """

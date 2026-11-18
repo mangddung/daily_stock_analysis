@@ -17,6 +17,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, List, Optional
 
+from src.services.run_diagnostics_i18n import localize_run_diagnostics
+
 logger = logging.getLogger(__name__)
 
 _CURRENT_CONTEXT: ContextVar[Optional["RunDiagnosticContext"]] = ContextVar(
@@ -1497,7 +1499,7 @@ def build_run_diagnostic_summary(
         or raw.get("stock_code")
     )
 
-    return RunDiagnosticSummary(
+    summary = RunDiagnosticSummary(
         trace_id=trace_id,
         task_id=diagnostics.get("task_id"),
         query_id=resolved_query_id,
@@ -1508,6 +1510,7 @@ def build_run_diagnostic_summary(
         reason=reason,
         components=components,
     ).to_dict()
+    return localize_run_diagnostics(summary)
 
 
 def format_copyable_diagnostics(summary: Dict[str, Any]) -> str:

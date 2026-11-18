@@ -5,6 +5,7 @@ name: box_oscillation
 display_name: 箱体震荡
 description: 识别价格箱体区间，在箱底买入、箱顶减仓，适用于横盘震荡行情。
 description_en: "Identifies the price box range: buy near the floor, trim near the ceiling. Suited to sideways, range-bound markets."
+description_ko: "가격 박스권을 식별해 하단 근처에서 매수하고 상단 근처에서 비중을 줄입니다. 횡보 장세에 적합합니다."
 category: framework
 core_rules: [1, 2, 3]
 required_tools:

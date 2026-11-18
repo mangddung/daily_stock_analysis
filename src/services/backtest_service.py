@@ -432,7 +432,7 @@ class BacktestService:
 
         identity = resolve_daily_stock_identity(str(code).strip())
         if identity is None:
-            raise ValueError(ui_text(f"非法股票代码格式: {code}", f"Invalid stock code format: {code}"))
+            raise ValueError(ui_text(f"非法股票代码格式: {code}", f"Invalid stock code format: {code}", f"잘못된 종목 코드 형식: {code}"))
         return identity.normalized_code
 
     @staticmethod
@@ -525,19 +525,19 @@ class BacktestService:
         if processed == 0:
             if has_matching_analysis:
                 diagnostics["empty_reason"] = "no_new_results"
-                message = ui_text("历史分析记录已存在，当前筛选条件下没有新的回测任务可执行。", "Historical analysis records already exist, but no new backtest tasks can run under the current filters.")
+                message = ui_text("历史分析记录已存在，当前筛选条件下没有新的回测任务可执行。", "Historical analysis records already exist, but no new backtest tasks can run under the current filters.", "과거 분석 기록은 이미 존재하지만, 현재 필터 조건에서 실행할 새 백테스트 작업이 없습니다.")
             else:
                 diagnostics["empty_reason"] = "no_matching_analysis"
-                message = ui_text("未找到符合条件的历史分析记录，请检查股票代码、分析日期范围、最小天龄或是否已生成历史分析。", "No matching historical analysis records found. Check the stock code, analysis date range, minimum age, or whether historical analysis has been generated.")
+                message = ui_text("未找到符合条件的历史分析记录，请检查股票代码、分析日期范围、最小天龄或是否已生成历史分析。", "No matching historical analysis records found. Check the stock code, analysis date range, minimum age, or whether historical analysis has been generated.", "조건에 맞는 과거 분석 기록을 찾을 수 없습니다. 종목 코드, 분석 기간, 최소 경과 일수 또는 과거 분석 생성 여부를 확인하십시오.")
         elif completed == 0 and insufficient > 0 and errors == 0:
             diagnostics["empty_reason"] = "insufficient_daily_data"
-            message = ui_text("已找到历史分析记录，但可用日线行情不足，无法完成回测。", "Historical analysis records found, but there is not enough daily market data to complete the backtest.")
+            message = ui_text("已找到历史分析记录，但可用日线行情不足，无法完成回测。", "Historical analysis records found, but there is not enough daily market data to complete the backtest.", "과거 분석 기록을 찾았지만, 사용 가능한 일봉 시세 데이터가 부족하여 백테스트를 완료할 수 없습니다.")
         elif completed == 0 and errors > 0:
             diagnostics["empty_reason"] = "evaluation_error"
-            message = ui_text("已找到历史分析记录，但回测计算失败，请查看后端日志或放宽筛选条件。", "Historical analysis records found, but the backtest calculation failed. Check the backend logs or relax the filters.")
+            message = ui_text("已找到历史分析记录，但回测计算失败，请查看后端日志或放宽筛选条件。", "Historical analysis records found, but the backtest calculation failed. Check the backend logs or relax the filters.", "과거 분석 기록을 찾았지만 백테스트 계산에 실패했습니다. 백엔드 로그를 확인하거나 필터 조건을 완화하십시오.")
         elif saved == 0 and completed == 0:
             diagnostics["empty_reason"] = "no_new_results"
-            message = ui_text("没有写入新的回测结果；如需覆盖已有结果，请启用强制重跑。", "No new backtest results were written. Enable force rerun to overwrite existing results.")
+            message = ui_text("没有写入新的回测结果；如需覆盖已有结果，请启用强制重跑。", "No new backtest results were written. Enable force rerun to overwrite existing results.", "새 백테스트 결과가 기록되지 않았습니다. 기존 결과를 덮어쓰려면 강제 재실행을 활성화하십시오.")
 
         if message:
             diagnostics["message"] = message

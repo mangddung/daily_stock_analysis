@@ -4,6 +4,7 @@ name: expectation_repricing
 display_name: 预期重估
 description: 分析业绩预期、政策预期和估值预期的变化，寻找预期差修复或预期过热后的回落风险。
 description_en: "Analyzes changes in earnings, policy and valuation expectations to find expectation-gap recoveries or overheated expectations."
+description_ko: "실적·정책·밸류에이션 기대의 변화를 분석해 기대 격차 회복 또는 기대 과열 후 하락 위험을 찾습니다."
 category: framework
 core_rules: [3, 5, 6]
 required_tools:

@@ -4,6 +4,7 @@ name: bull_trend
 display_name: 默认多头趋势
 description: 默认个股分析优先策略，识别多头排列、趋势延续与回踩低吸机会。
 description_en: "Default priority strategy for single-stock analysis; identifies bullish alignment, trend continuation and pullback buying opportunities."
+description_ko: "단일 종목 분석의 기본 우선 전략으로, 정배열, 추세 지속 및 눌림목 매수 기회를 식별합니다."
 category: trend
 core_rules: [1, 2, 3]
 required_tools:

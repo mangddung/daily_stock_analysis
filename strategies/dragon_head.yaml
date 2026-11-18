@@ -5,6 +5,7 @@ name: dragon_head
 display_name: 龙头策略
 description: 板块轮动中识别龙头股。适用于板块启动或行业催化剂出现时。
 description_en: "Identifies sector leaders during sector rotation. Suited to sector launches or the emergence of an industry catalyst."
+description_ko: "업종 순환매 속에서 대장주를 식별합니다. 업종 상승 초기나 산업 촉매가 나타날 때 적합합니다."
 category: trend
 core_rules: [2, 7]
 required_tools:

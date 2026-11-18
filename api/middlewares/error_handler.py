@@ -62,7 +62,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
                 status_code=500,
                 content={
                     "error": "internal_error",
-                    "message": ui_text("服务器内部错误，请稍后重试", "Internal server error. Try again later"),
+                    "message": ui_text("服务器内部错误，请稍后重试", "Internal server error. Try again later", "서버 내부 오류가 발생했습니다. 잠시 후 다시 시도하십시오"),
                     "detail": str(e) if logger.isEnabledFor(logging.DEBUG) else None
                 }
             )
@@ -106,7 +106,7 @@ def add_error_handlers(app) -> None:
             status_code=422,
             content={
                 "error": "validation_error",
-                "message": ui_text("请求参数验证失败", "Request validation failed"),
+                "message": ui_text("请求参数验证失败", "Request validation failed", "요청 매개변수 검증에 실패했습니다"),
                 "detail": exc.errors()
             }
         )
@@ -123,7 +123,7 @@ def add_error_handlers(app) -> None:
             status_code=500,
             content={
                 "error": "internal_error",
-                "message": ui_text("服务器内部错误", "Internal server error"),
+                "message": ui_text("服务器内部错误", "Internal server error", "서버 내부 오류"),
                 "detail": None
             }
         )

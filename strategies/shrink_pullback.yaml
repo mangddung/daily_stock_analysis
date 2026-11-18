@@ -5,6 +5,7 @@ name: shrink_pullback
 display_name: 缩量回踩
 description: 检测缩量回踩均线支撑信号，趋势延续的理想入场点。
 description_en: "Detects a low-volume pullback to moving-average support; an ideal trend-continuation entry point."
+description_ko: "거래량이 줄어든 상태에서 이동평균선 지지선까지의 눌림을 감지합니다. 이상적인 추세 지속 진입 시점입니다."
 category: trend
 core_rules: [1, 2, 4]
 required_tools:

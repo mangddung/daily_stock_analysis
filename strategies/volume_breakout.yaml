@@ -5,6 +5,7 @@ name: volume_breakout
 display_name: 放量突破
 description: 检测放量突破阻力位信号。适用于股价接近已知阻力位时。
 description_en: "Detects a high-volume breakout above resistance. Suited to prices approaching a known resistance level."
+description_ko: "거래량을 동반한 저항선 돌파를 감지합니다. 주가가 알려진 저항선에 근접할 때 적합합니다."
 category: trend
 core_rules: [1, 2, 3]
 required_tools:

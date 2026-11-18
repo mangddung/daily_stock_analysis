@@ -100,7 +100,7 @@ def _history_share_image_input(
             status_code=404,
             detail={
                 "error": "not_found",
-                "message": ui_text(f"未找到 id/query_id={record_id} 的分析记录", f"Analysis record not found for id/query_id={record_id}"),
+                "message": ui_text(f"未找到 id/query_id={record_id} 的分析记录", f"Analysis record not found for id/query_id={record_id}", f"id/query_id={record_id}의 분석 기록을 찾을 수 없습니다"),
             },
         )
 
@@ -112,7 +112,7 @@ def _history_share_image_input(
             status_code=500,
             detail={
                 "error": "generation_failed",
-                "message": ui_text(f"生成分享图片所需报告失败: {exc.message}", f"Failed to build the report for the share image: {exc.message}"),
+                "message": ui_text(f"生成分享图片所需报告失败: {exc.message}", f"Failed to build the report for the share image: {exc.message}", f"공유 이미지용 리포트 생성에 실패했습니다: {exc.message}"),
             },
         ) from exc
 
@@ -121,7 +121,7 @@ def _history_share_image_input(
             status_code=404,
             detail={
                 "error": "not_found",
-                "message": ui_text(f"未找到 id/query_id={record_id} 的报告内容", f"Report content not found for id/query_id={record_id}"),
+                "message": ui_text(f"未找到 id/query_id={record_id} 的报告内容", f"Report content not found for id/query_id={record_id}", f"id/query_id={record_id}의 리포트 내용을 찾을 수 없습니다"),
             },
         )
     return result, markdown_content
@@ -310,7 +310,7 @@ def get_history_list(
             status_code=500,
             detail={
                 "error": "internal_error",
-                "message": ui_text(f"查询历史列表失败: {str(e)}", f"Failed to query history list: {str(e)}")
+                "message": ui_text(f"查询历史列表失败: {str(e)}", f"Failed to query history list: {str(e)}", f"기록 목록 조회에 실패했습니다: {str(e)}")
             }
         )
 
@@ -364,7 +364,7 @@ def delete_history_by_code(
         logger.error(f"按股票代码删除历史记录失败: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail={"error": "internal_error", "message": ui_text(f"删除失败: {str(e)}", f"Delete failed: {str(e)}")},
+            detail={"error": "internal_error", "message": ui_text(f"删除失败: {str(e)}", f"Delete failed: {str(e)}", f"삭제에 실패했습니다: {str(e)}")},
         )
 
 
@@ -392,7 +392,7 @@ def delete_history_records(
             status_code=400,
             detail={
                 "error": "invalid_request",
-                "message": ui_text("record_ids 不能为空", "record_ids must not be empty")
+                "message": ui_text("record_ids 不能为空", "record_ids must not be empty", "record_ids는 비워 둘 수 없습니다")
             }
         )
 
@@ -408,7 +408,7 @@ def delete_history_records(
             status_code=500,
             detail={
                 "error": "internal_error",
-                "message": ui_text(f"删除历史记录失败: {str(e)}", f"Failed to delete history records: {str(e)}")
+                "message": ui_text(f"删除历史记录失败: {str(e)}", f"Failed to delete history records: {str(e)}", f"기록 삭제에 실패했습니다: {str(e)}")
             }
         )
 
@@ -514,7 +514,7 @@ def get_stock_bar(
             status_code=500,
             detail={
                 "error": "internal_error",
-                "message": ui_text(f"查询个股栏失败: {str(e)}", f"Failed to query stock column: {str(e)}"),
+                "message": ui_text(f"查询个股栏失败: {str(e)}", f"Failed to query stock column: {str(e)}", f"종목 칼럼 조회에 실패했습니다: {str(e)}"),
             },
         )
 
@@ -561,7 +561,7 @@ def get_history_detail(
                 status_code=404,
                 detail={
                     "error": "not_found",
-                    "message": ui_text(f"未找到 id/query_id={record_id} 的分析记录", f"Analysis record not found for id/query_id={record_id}")
+                    "message": ui_text(f"未找到 id/query_id={record_id} 的分析记录", f"Analysis record not found for id/query_id={record_id}", f"id/query_id={record_id}의 분석 기록을 찾을 수 없습니다")
                 }
             )
         
@@ -687,7 +687,7 @@ def get_history_detail(
             status_code=500,
             detail={
                 "error": "internal_error",
-                "message": ui_text(f"查询历史详情失败: {str(e)}", f"Failed to query history detail: {str(e)}")
+                "message": ui_text(f"查询历史详情失败: {str(e)}", f"Failed to query history detail: {str(e)}", f"기록 상세 조회에 실패했습니다: {str(e)}")
             }
         )
 
@@ -718,7 +718,7 @@ def get_history_diagnostics(
                 status_code=404,
                 detail={
                     "error": "not_found",
-                    "message": ui_text(f"未找到 id/query_id={record_id} 的分析记录", f"Analysis record not found for id/query_id={record_id}"),
+                    "message": ui_text(f"未找到 id/query_id={record_id} 的分析记录", f"Analysis record not found for id/query_id={record_id}", f"id/query_id={record_id}의 분석 기록을 찾을 수 없습니다"),
                 },
             )
         return RunDiagnosticSummaryResponse.model_validate(summary)
@@ -730,7 +730,7 @@ def get_history_diagnostics(
             status_code=500,
             detail={
                 "error": "internal_error",
-                "message": ui_text(f"查询运行诊断摘要失败: {str(e)}", f"Failed to query run diagnostics summary: {str(e)}"),
+                "message": ui_text(f"查询运行诊断摘要失败: {str(e)}", f"Failed to query run diagnostics summary: {str(e)}", f"실행 진단 요약 조회에 실패했습니다: {str(e)}"),
             },
         )
 
@@ -761,7 +761,7 @@ def get_history_run_flow(
                 status_code=404,
                 detail={
                     "error": "not_found",
-                    "message": ui_text(f"未找到 id/query_id={record_id} 的分析记录", f"Analysis record not found for id/query_id={record_id}"),
+                    "message": ui_text(f"未找到 id/query_id={record_id} 的分析记录", f"Analysis record not found for id/query_id={record_id}", f"id/query_id={record_id}의 분석 기록을 찾을 수 없습니다"),
                 },
             )
         return snapshot
@@ -773,7 +773,7 @@ def get_history_run_flow(
             status_code=500,
             detail={
                 "error": "internal_error",
-                "message": ui_text(f"查询运行流快照失败: {str(e)}", f"Failed to query run flow snapshot: {str(e)}"),
+                "message": ui_text(f"查询运行流快照失败: {str(e)}", f"Failed to query run flow snapshot: {str(e)}", f"실행 흐름 스냅샷 조회에 실패했습니다: {str(e)}"),
             },
         )
 
@@ -831,7 +831,7 @@ def get_history_news(
             status_code=500,
             detail={
                 "error": "internal_error",
-                "message": ui_text(f"查询新闻情报失败: {str(e)}", f"Failed to query news intelligence: {str(e)}")
+                "message": ui_text(f"查询新闻情报失败: {str(e)}", f"Failed to query news intelligence: {str(e)}", f"뉴스 인텔리전스 조회에 실패했습니다: {str(e)}")
             }
         )
 
@@ -860,7 +860,7 @@ def get_history_share_image_html(
             status_code=413,
             detail={
                 "error": "share_image_too_large",
-                "message": ui_text(f"报告内容超过分享图片上限 {max_chars} 字符", f"Report content exceeds the share image limit of {max_chars} characters"),
+                "message": ui_text(f"报告内容超过分享图片上限 {max_chars} 字符", f"Report content exceeds the share image limit of {max_chars} characters", f"리포트 내용이 공유 이미지 한도인 {max_chars}자를 초과합니다"),
             },
         )
 
@@ -876,7 +876,7 @@ def get_history_share_image_html(
             status_code=500,
             detail={
                 "error": "generation_failed",
-                "message": ui_text("生成桌面分享图片内容失败", "Failed to generate desktop share image content"),
+                "message": ui_text("生成桌面分享图片内容失败", "Failed to generate desktop share image content", "데스크톱 공유 이미지 내용 생성에 실패했습니다"),
             },
         ) from exc
 
@@ -920,7 +920,7 @@ def get_history_share_image(
             status_code=503,
             detail={
                 "error": "share_image_unavailable",
-                "message": ui_text(f"分享图片生成失败，请检查 {engine} 转图工具是否已安装并可用", f"Share image generation failed. Check that the {engine} image converter is installed and available"),
+                "message": ui_text(f"分享图片生成失败，请检查 {engine} 转图工具是否已安装并可用", f"Share image generation failed. Check that the {engine} image converter is installed and available", f"공유 이미지 생성에 실패했습니다. {engine} 이미지 변환 도구가 설치되어 사용 가능한지 확인하십시오"),
             },
         )
 
@@ -977,7 +977,7 @@ def get_history_markdown(
             status_code=500,
             detail={
                 "error": "generation_failed",
-                "message": ui_text(f"生成 Markdown 报告失败: {e.message}", f"Failed to generate Markdown report: {e.message}")
+                "message": ui_text(f"生成 Markdown 报告失败: {e.message}", f"Failed to generate Markdown report: {e.message}", f"Markdown 리포트 생성에 실패했습니다: {e.message}")
             }
         )
     except Exception as e:
@@ -986,7 +986,7 @@ def get_history_markdown(
             status_code=500,
             detail={
                 "error": "internal_error",
-                "message": ui_text(f"获取 Markdown 报告失败: {str(e)}", f"Failed to fetch Markdown report: {str(e)}")
+                "message": ui_text(f"获取 Markdown 报告失败: {str(e)}", f"Failed to fetch Markdown report: {str(e)}", f"Markdown 리포트 가져오기에 실패했습니다: {str(e)}")
             }
         )
 
@@ -995,7 +995,7 @@ def get_history_markdown(
             status_code=404,
             detail={
                 "error": "not_found",
-                "message": ui_text(f"未找到 id/query_id={record_id} 的分析记录", f"Analysis record not found for id/query_id={record_id}")
+                "message": ui_text(f"未找到 id/query_id={record_id} 的分析记录", f"Analysis record not found for id/query_id={record_id}", f"id/query_id={record_id}의 분석 기록을 찾을 수 없습니다")
             }
         )
 

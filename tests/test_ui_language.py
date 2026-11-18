@@ -16,7 +16,11 @@ def _app() -> FastAPI:
 
     @app.get("/text")
     def text():
-        return {"language": current_ui_language(), "text": ui_text("中文", "English")}
+        return {"language": current_ui_language(), "text": ui_text("中文", "English", "한국어")}
+
+    @app.get("/fallback")
+    def fallback():
+        return {"text": ui_text("中文", "English")}
 
     @app.get("/stream")
     def stream():
@@ -37,6 +41,12 @@ class UiLanguageMiddlewareTest(unittest.TestCase):
     def test_english_header_selects_english(self):
         response = self.client.get("/text", headers={"X-DSA-UI-Language": "en"})
         self.assertEqual(response.json(), {"language": "en", "text": "English"})
+
+    def test_korean_header_selects_korean_and_falls_back_to_english(self):
+        response = self.client.get("/text", headers={"X-DSA-UI-Language": "ko"})
+        self.assertEqual(response.json(), {"language": "ko", "text": "한국어"})
+        response = self.client.get("/fallback", headers={"X-DSA-UI-Language": "ko-KR"})
+        self.assertEqual(response.json()["text"], "English")
 
     def test_unknown_value_falls_back_to_chinese(self):
         response = self.client.get("/text", headers={"X-DSA-UI-Language": "fr"})

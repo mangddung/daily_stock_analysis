@@ -487,7 +487,7 @@ def analyze_position(symbol: str, request: PortfolioPositionAnalysisRequest) -> 
         task_id=task.task_id,
         trace_id=task.trace_id or task.task_id,
         status="pending",
-        message=ui_text(f"分析任务已加入队列: {task.stock_code}", f"Analysis task queued: {task.stock_code}"),
+        message=ui_text(f"分析任务已加入队列: {task.stock_code}", f"Analysis task queued: {task.stock_code}", f"분석 작업이 대기열에 추가되었습니다: {task.stock_code}"),
         analysis_phase=task.analysis_phase,
     )
     return response

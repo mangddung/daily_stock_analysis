@@ -50,6 +50,17 @@ def test_english_ui_translates_fixed_phrases_and_templates():
     assert out["news_title"] == PAYLOAD["news_title"]
 
 
+def test_korean_ui_translates_fixed_phrases_and_templates():
+    out = _run("ko")
+    assert out["strategies"][0]["name"] == "거래량 돌파"
+    assert out["route"][0]["title"] == "촉매 대기"
+    assert out["summary"] == "芯片 열기 85.0, 단계 가속, 핵심 종목 中芯国际。"
+    assert "로켓 발사 2회; 움직임 유형 9 1회." in out["desc"]
+    assert out["why_selected"][0]["text"] == "핵심 요인: value 80.0, momentum 70.0"
+    assert out["message"] == "종목 발굴 완료, 후보 12개 정리 중"
+    assert out["news_title"] == PAYLOAD["news_title"]
+
+
 def test_all_known_strategy_yaml_strings_have_english():
     import glob
     import yaml

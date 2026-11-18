@@ -46,7 +46,7 @@ from src.agent.stock_scope import StockScope
 from src.llm.usage import should_persist_usage_telemetry
 from src.utils.data_processing import normalize_report_signal_attribution
 from src.storage import persist_llm_usage as _persist_usage
-from src.ui_language import is_english_ui, ui_text
+from src.ui_language import current_ui_language, ui_text
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +101,31 @@ _THINKING_TOOL_LABELS_EN: Dict[str, str] = {
     "get_skill_backtest_summary": "skill backtest summary",
     "get_strategy_backtest_summary": "strategy backtest summary",
     "get_stock_backtest_summary": "stock backtest data",
+}
+
+_THINKING_TOOL_LABELS_KO: Dict[str, str] = {
+    "get_realtime_quote": "시세 조회",
+    "get_daily_history": "일봉 데이터 조회",
+    "analyze_trend": "기술적 지표 분석",
+    "get_chip_distribution": "매물대 분포 분석",
+    "search_stock_news": "뉴스 검색",
+    "search_comprehensive_intel": "종합 정보 검색",
+    "get_market_indices": "시장 개요 조회",
+    "get_sector_rankings": "업종 분석",
+    "get_analysis_context": "과거 분석 컨텍스트",
+    "get_stock_info": "기본 정보 조회",
+    "analyze_pattern": "캔들 패턴 식별",
+    "get_volume_analysis": "거래량 분석",
+    "calculate_ma": "이동평균선 계산",
+    "get_skill_backtest_summary": "스킬 백테스트 요약",
+    "get_strategy_backtest_summary": "전략 백테스트 요약",
+    "get_stock_backtest_summary": "종목 백테스트 데이터",
+}
+
+_THINKING_TOOL_LABELS_BY_LANGUAGE: Dict[str, Dict[str, str]] = {
+    "zh": _THINKING_TOOL_LABELS,
+    "en": _THINKING_TOOL_LABELS_EN,
+    "ko": _THINKING_TOOL_LABELS_KO,
 }
 
 
@@ -383,7 +408,7 @@ def run_agent_loop(
         A :class:`RunLoopResult` with the final content, stats, and the
         (mutated) messages list.
     """
-    labels = thinking_labels or (_THINKING_TOOL_LABELS_EN if is_english_ui() else _THINKING_TOOL_LABELS)
+    labels = thinking_labels or _THINKING_TOOL_LABELS_BY_LANGUAGE[current_ui_language()]
     tool_decls = tool_registry.to_openai_tools()
 
     start_time = time.time()
@@ -468,11 +493,11 @@ def run_agent_loop(
         # --- progress: thinking ---
         if progress_callback:
             if not tool_calls_log:
-                thinking_msg = ui_text("正在制定分析路径...", "Planning the analysis path...")
+                thinking_msg = ui_text("正在制定分析路径...", "Planning the analysis path...", "분석 경로를 계획하는 중...")
             else:
                 last_tool = tool_calls_log[-1].get("tool", "")
                 label = labels.get(last_tool, last_tool)
-                thinking_msg = ui_text(f"「{label}」已完成，继续深入分析...", f"\"{label}\" completed, continuing the analysis...")
+                thinking_msg = ui_text(f"「{label}」已完成，继续深入分析...", f"\"{label}\" completed, continuing the analysis...", f"\"{label}\" 완료, 분석을 계속하는 중...")
             progress_callback(stream_event("thinking", step=step + 1, message=thinking_msg))
 
         # --- LLM call ---
@@ -587,7 +612,7 @@ def run_agent_loop(
                 total_tokens,
             )
             if progress_callback:
-                progress_callback(stream_event("generating", step=step + 1, message=ui_text("正在生成最终分析...", "Generating the final analysis...")))
+                progress_callback(stream_event("generating", step=step + 1, message=ui_text("正在生成最终分析...", "Generating the final analysis...", "최종 분석을 생성하는 중...")))
 
             final_content = response.content or ""
             is_error = response.provider == "error"

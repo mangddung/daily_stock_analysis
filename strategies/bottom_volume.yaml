@@ -5,6 +5,7 @@ name: bottom_volume
 display_name: 底部放量
 description: 检测长期下跌后底部放量信号，潜在趋势反转信号。
 description_en: "Detects a volume surge at the bottom after a prolonged decline; a potential trend-reversal signal."
+description_ko: "장기 하락 후 바닥권의 거래량 급증을 감지합니다. 잠재적인 추세 반전 신호입니다."
 category: reversal
 core_rules: [2, 5]
 required_tools:

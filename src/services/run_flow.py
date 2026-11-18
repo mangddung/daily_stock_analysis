@@ -16,6 +16,7 @@ from src.services.run_diagnostics import (
     sanitize_diagnostic_metadata,
     sanitize_diagnostic_text,
 )
+from src.services.run_diagnostics_i18n import localize_run_diagnostics
 from src.utils.data_processing import normalize_model_used, parse_json_field
 
 
@@ -73,6 +74,10 @@ _CONTEXT_STATUS_TO_FLOW = {
     "not_supported": "skipped",
     "fetch_failed": "failed",
 }
+
+def _localized_snapshot(payload: Dict[str, Any]) -> RunFlowSnapshot:
+    return RunFlowSnapshot.model_validate(localize_run_diagnostics(payload, flow=True))
+
 
 def build_task_run_flow_snapshot(
     task: Any,
@@ -163,7 +168,7 @@ def build_task_run_flow_snapshot(
         events,
         elapsed_ms=_elapsed_ms(getattr(task, "created_at", None), getattr(task, "completed_at", None)),
     )
-    return RunFlowSnapshot.model_validate(
+    return _localized_snapshot(
         {
             "task_id": task_id,
             "trace_id": trace_id,
@@ -351,7 +356,7 @@ def build_history_run_flow_snapshot(
     if summary.get("model") is None:
         summary["model"] = _safe_text(normalize_model_used(raw.get("model_used")) if raw else None, max_length=120)
 
-    return RunFlowSnapshot.model_validate(
+    return _localized_snapshot(
         {
             "task_id": task_id,
             "trace_id": trace_id,

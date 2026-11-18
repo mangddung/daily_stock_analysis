@@ -241,7 +241,7 @@ def _extract_guardrail_reason(raw_result: Any) -> Optional[str]:
 
 
 def _invalid_analysis_input_error() -> HTTPException:
-    return api_error(400, "validation_error", ui_text("请输入有效的股票代码或股票名称", "Enter a valid stock code or stock name"))
+    return api_error(400, "validation_error", ui_text("请输入有效的股票代码或股票名称", "Enter a valid stock code or stock name", "유효한 종목 코드 또는 종목명을 입력하십시오"))
 
 
 def _is_obviously_invalid_analysis_input(text: str) -> bool:
@@ -378,7 +378,7 @@ def trigger_analysis(
         stock_codes.extend(request.stock_codes)
 
     if not stock_codes:
-        raise api_error(400, "validation_error", ui_text("必须提供 stock_code 或 stock_codes 参数", "stock_code or stock_codes is required"))
+        raise api_error(400, "validation_error", ui_text("必须提供 stock_code 或 stock_codes 参数", "stock_code or stock_codes is required", "stock_code 또는 stock_codes 매개변수가 필요합니다"))
 
     # Limit the number of non-blank raw tokens BEFORE resolution. Rejected and
     # duplicate tokens must also count toward the cap, otherwise a request that
@@ -387,7 +387,7 @@ def trigger_analysis(
     MAX_BATCH_SIZE = 50
     non_empty_raw_tokens = [c for c in stock_codes if str(c or "").strip()]
     if len(non_empty_raw_tokens) > MAX_BATCH_SIZE:
-        raise api_error(400, "validation_error", ui_text(f"单次分析请求最多支持 {MAX_BATCH_SIZE} 只股票", f"A single analysis request supports at most {MAX_BATCH_SIZE} stocks"))
+        raise api_error(400, "validation_error", ui_text(f"单次分析请求最多支持 {MAX_BATCH_SIZE} 只股票", f"A single analysis request supports at most {MAX_BATCH_SIZE} stocks", f"한 번의 분석 요청은 최대 {MAX_BATCH_SIZE}개 종목까지 지원합니다"))
 
     # Normalize and de-duplicate inputs while preserving compatibility.
     # Code-like tokens go through parse_analysis_target (the single asset-type
@@ -424,11 +424,11 @@ def trigger_analysis(
 
     if not stock_codes:
         if not rejected_entries:
-            raise api_error(400, "validation_error", ui_text("股票代码不能为空或仅包含空白字符", "Stock code must not be empty or whitespace only"))
+            raise api_error(400, "validation_error", ui_text("股票代码不能为空或仅包含空白字符", "Stock code must not be empty or whitespace only", "종목 코드는 비어 있거나 공백만으로 구성될 수 없습니다"))
         # 全部目标都被拒绝（单请求或批量全拒）：无任务被接受时返回 202 会误导
         # 客户端，一律明确 400；部分被拒则走下方 rejected 语义。
         code, target = rejected_entries[0]
-        reason = target.unsupported_reason or ui_text(f"不支持的目标: {code}", f"Unsupported target: {code}")
+        reason = target.unsupported_reason or ui_text(f"不支持的目标: {code}", f"Unsupported target: {code}", f"지원하지 않는 대상: {code}")
         raise api_error(400, "validation_error", reason)
 
     # Sync mode only supports single-stock analysis.
@@ -437,13 +437,13 @@ def trigger_analysis(
             raise api_error(
                 400,
                 "validation_error",
-                ui_text("同步模式仅支持单只股票分析，请使用 async_mode=true 进行批量分析", "Sync mode supports single-stock analysis only. Use async_mode=true for batch analysis"),
+                ui_text("同步模式仅支持单只股票分析，请使用 async_mode=true 进行批量分析", "Sync mode supports single-stock analysis only. Use async_mode=true for batch analysis", "동기 모드는 단일 종목 분석만 지원합니다. 일괄 분석은 async_mode=true를 사용하십시오"),
             )
         if rejected_entries:
             # 同步模式不支持 rejected 语义：只要存在被拒绝目标（含全部被拒绝）
             # 就以第一个未登记目标的明确校验错误返回 4xx。
             code, target = rejected_entries[0]
-            reason = target.unsupported_reason or ui_text(f"不支持的目标: {code}", f"Unsupported target: {code}")
+            reason = target.unsupported_reason or ui_text(f"不支持的目标: {code}", f"Unsupported target: {code}", f"지원하지 않는 대상: {code}")
             raise api_error(400, "validation_error", reason)
         return _handle_sync_analysis(stock_codes[0], request, analysis_target=unique_targets[0] if unique_targets else None)
 
@@ -515,7 +515,7 @@ def _handle_async_analysis_batch(
             trace_id=_get_task_trace_id(task),
             stock_code=task.stock_code,
             status="pending",
-            message=ui_text(f"分析任务已加入队列: {task.stock_code}", f"Analysis task queued: {task.stock_code}"),
+            message=ui_text(f"分析任务已加入队列: {task.stock_code}", f"Analysis task queued: {task.stock_code}", f"분석 작업이 대기열에 추가되었습니다: {task.stock_code}"),
             analysis_phase=task.analysis_phase,
             asset_type=_task_asset_type(task),
         )
@@ -532,7 +532,7 @@ def _handle_async_analysis_batch(
     rejected = [
         RejectedTaskItem(
             stock_code=code,
-            message=(target.unsupported_reason or ui_text(f"不支持的目标: {code}", f"Unsupported target: {code}")),
+            message=(target.unsupported_reason or ui_text(f"不支持的目标: {code}", f"Unsupported target: {code}", f"지원하지 않는 대상: {code}")),
         )
         for code, target in (rejected_entries or [])
     ]
@@ -568,9 +568,9 @@ def _handle_async_analysis_batch(
     # 批量：返回汇总结果（rejected 仅 async 批量返回）
     rejected_count = len(rejected)
     if rejected_count:
-        message = ui_text(f"已提交 {len(accepted)} 个任务，{len(duplicates)} 个重复跳过，{rejected_count} 个被拒绝", f"Submitted {len(accepted)} tasks, {len(duplicates)} duplicates skipped, {rejected_count} rejected")
+        message = ui_text(f"已提交 {len(accepted)} 个任务，{len(duplicates)} 个重复跳过，{rejected_count} 个被拒绝", f"Submitted {len(accepted)} tasks, {len(duplicates)} duplicates skipped, {rejected_count} rejected", f"작업 {len(accepted)}개 제출, 중복 {len(duplicates)}개 건너뜀, {rejected_count}개 거부됨")
     else:
-        message = ui_text(f"已提交 {len(accepted)} 个任务，{len(duplicates)} 个重复跳过", f"Submitted {len(accepted)} tasks, {len(duplicates)} duplicates skipped")
+        message = ui_text(f"已提交 {len(accepted)} 个任务，{len(duplicates)} 个重复跳过", f"Submitted {len(accepted)} tasks, {len(duplicates)} duplicates skipped", f"작업 {len(accepted)}개 제출, 중복 {len(duplicates)}개 건너뜀")
     batch_response = BatchTaskAcceptedResponse(
         accepted=accepted,
         duplicates=duplicates,
@@ -613,7 +613,7 @@ def _handle_sync_analysis(
         )
 
         if result is None:
-            error_message = service.last_error or ui_text(f"分析股票 {stock_code} 失败", f"Analysis of stock {stock_code} failed")
+            error_message = service.last_error or ui_text(f"分析股票 {stock_code} 失败", f"Analysis of stock {stock_code} failed", f"종목 {stock_code} 분석에 실패했습니다")
             raise api_error(500, "analysis_failed", error_message)
 
         # 构建报告结构
@@ -646,7 +646,7 @@ def _handle_sync_analysis(
         raise
     except Exception as e:
         logger.error(f"分析失败: {e}", exc_info=True)
-        raise api_error(500, "internal_error", ui_text(f"分析过程发生错误: {str(e)}", f"Error during analysis: {str(e)}"))
+        raise api_error(500, "internal_error", ui_text(f"分析过程发生错误: {str(e)}", f"Error during analysis: {str(e)}", f"분석 중 오류가 발생했습니다: {str(e)}"))
 
 
 # ============================================================
@@ -679,7 +679,7 @@ def trigger_market_review(
 
     lock_token = _try_acquire_market_review_lock(runtime_config)
     if lock_token is None:
-        raise api_error(409, "duplicate_market_review", ui_text("大盘复盘正在执行中，请稍后再试", "Market review is already running. Try again later"))
+        raise api_error(409, "duplicate_market_review", ui_text("大盘复盘正在执行中，请稍后再试", "Market review is already running. Try again later", "시장 리뷰가 이미 실행 중입니다. 잠시 후 다시 시도하십시오"))
 
     try:
         task_id = uuid.uuid4().hex
@@ -700,7 +700,7 @@ def trigger_market_review(
             ),
             stock_code="market_review",
             stock_name="大盘复盘",
-            message=ui_text("大盘复盘任务已提交", "Market review task submitted"),
+            message=ui_text("大盘复盘任务已提交", "Market review task submitted", "시장 리뷰 작업이 제출되었습니다"),
             task_id=task_id,
             region=effective_region,
         )
@@ -710,7 +710,7 @@ def trigger_market_review(
 
     return MarketReviewAccepted(
         status="accepted",
-        message=ui_text("大盘复盘任务已提交，完成后会保存报告并按配置推送通知", "Market review task submitted. The report will be saved and notifications sent as configured when it completes"),
+        message=ui_text("大盘复盘任务已提交，完成后会保存报告并按配置推送通知", "Market review task submitted. The report will be saved and notifications sent as configured when it completes", "시장 리뷰 작업이 제출되었습니다. 완료되면 리포트가 저장되고 설정에 따라 알림이 전송됩니다"),
         send_notification=request.send_notification,
         region=effective_region,
         task_id=task.task_id,
@@ -952,9 +952,9 @@ def get_task_run_flow(task_id: str) -> RunFlowSnapshot:
             return history_snapshot
     except Exception as e:
         logger.error(f"查询任务运行流失败: {e}", exc_info=True)
-        raise api_error(500, "internal_error", ui_text(f"查询任务运行流失败: {str(e)}", f"Failed to query task run flow: {str(e)}"))
+        raise api_error(500, "internal_error", ui_text(f"查询任务运行流失败: {str(e)}", f"Failed to query task run flow: {str(e)}", f"작업 실행 흐름 조회에 실패했습니다: {str(e)}"))
 
-    raise api_error(404, "not_found", ui_text(f"任务 {task_id} 不存在或已过期", f"Task {task_id} does not exist or has expired"))
+    raise api_error(404, "not_found", ui_text(f"任务 {task_id} 不存在或已过期", f"Task {task_id} does not exist or has expired", f"작업 {task_id}이(가) 존재하지 않거나 만료되었습니다"))
 
 
 def _safe_task_flow_text(value: Any, *, max_length: int) -> Optional[str]:
@@ -1411,10 +1411,10 @@ def get_analysis_status(task_id: str) -> TaskStatus:
 
     except Exception as e:
         logger.error(f"查询任务状态失败: {e}", exc_info=True)
-        raise api_error(500, "internal_error", ui_text(f"查询任务状态失败: {str(e)}", f"Failed to query task status: {str(e)}"))
+        raise api_error(500, "internal_error", ui_text(f"查询任务状态失败: {str(e)}", f"Failed to query task status: {str(e)}", f"작업 상태 조회에 실패했습니다: {str(e)}"))
 
     # 3. 任务不存在
-    raise api_error(404, "not_found", ui_text(f"任务 {task_id} 不存在或已过期", f"Task {task_id} does not exist or has expired"))
+    raise api_error(404, "not_found", ui_text(f"任务 {task_id} 不存在或已过期", f"Task {task_id} does not exist or has expired", f"작업 {task_id}이(가) 존재하지 않거나 만료되었습니다"))
 
 
 # ============================================================

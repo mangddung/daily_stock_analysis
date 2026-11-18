@@ -82,7 +82,7 @@ def run_backtest(
         logger.error(f"回测执行失败: {exc}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail={"error": "internal_error", "message": ui_text(f"回测执行失败: {str(exc)}", f"Backtest failed: {str(exc)}")},
+            detail={"error": "internal_error", "message": ui_text(f"回测执行失败: {str(exc)}", f"Backtest failed: {str(exc)}", f"백테스트 실행에 실패했습니다: {str(exc)}")},
         )
 
 
@@ -137,7 +137,7 @@ def get_backtest_results(
         logger.error(f"查询回测结果失败: {exc}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail={"error": "internal_error", "message": ui_text(f"查询回测结果失败: {str(exc)}", f"Failed to query backtest results: {str(exc)}")},
+            detail={"error": "internal_error", "message": ui_text(f"查询回测结果失败: {str(exc)}", f"Failed to query backtest results: {str(exc)}", f"백테스트 결과 조회에 실패했습니다: {str(exc)}")},
         )
 
 
@@ -173,7 +173,7 @@ def get_overall_performance(
         if summary is None:
             raise HTTPException(
                 status_code=404,
-                detail={"error": "not_found", "message": ui_text("未找到整体回测汇总", "Overall backtest summary not found")},
+                detail={"error": "not_found", "message": ui_text("未找到整体回测汇总", "Overall backtest summary not found", "전체 백테스트 요약을 찾을 수 없습니다")},
             )
         return PerformanceMetrics(**summary)
     except ValueError as exc:
@@ -187,7 +187,7 @@ def get_overall_performance(
         logger.error(f"查询整体表现失败: {exc}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail={"error": "internal_error", "message": ui_text(f"查询整体表现失败: {str(exc)}", f"Failed to query overall performance: {str(exc)}")},
+            detail={"error": "internal_error", "message": ui_text(f"查询整体表现失败: {str(exc)}", f"Failed to query overall performance: {str(exc)}", f"전체 성과 조회에 실패했습니다: {str(exc)}")},
         )
 
 
@@ -224,7 +224,7 @@ def get_stock_performance(
         if summary is None:
             raise HTTPException(
                 status_code=404,
-                detail={"error": "not_found", "message": ui_text(f"未找到 {code} 的回测汇总", f"Backtest summary not found for {code}")},
+                detail={"error": "not_found", "message": ui_text(f"未找到 {code} 的回测汇总", f"Backtest summary not found for {code}", f"{code}의 백테스트 요약을 찾을 수 없습니다")},
             )
         return PerformanceMetrics(**summary)
     except ValueError as exc:
@@ -238,5 +238,5 @@ def get_stock_performance(
         logger.error(f"查询单股表现失败: {exc}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail={"error": "internal_error", "message": ui_text(f"查询单股表现失败: {str(exc)}", f"Failed to query per-stock performance: {str(exc)}")},
+            detail={"error": "internal_error", "message": ui_text(f"查询单股表现失败: {str(exc)}", f"Failed to query per-stock performance: {str(exc)}", f"종목별 성과 조회에 실패했습니다: {str(exc)}")},
         )

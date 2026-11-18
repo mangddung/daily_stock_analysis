@@ -4,6 +4,7 @@ name: hot_theme
 display_name: 热点题材
 description: 跟踪政策、产业和市场热点，判断题材强度、板块扩散和个股相对强弱。
 description_en: "Tracks policy, industry and market hot spots to judge theme strength, sector spillover and relative strength of individual stocks."
+description_ko: "정책·산업·시장 핫이슈를 추적해 테마 강도, 업종 확산 및 개별 종목의 상대 강도를 판단합니다."
 category: framework
 core_rules: [2, 3, 5, 7]
 required_tools:

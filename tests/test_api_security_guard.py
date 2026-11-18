@@ -86,7 +86,7 @@ class SecurityGuardTestCase(unittest.TestCase):
         self.assertNotIn("guard", sys.modules)
         self.assertEqual(
             [m.cls.__name__ for m in app.user_middleware],
-            ["AuthMiddleware", "CORSMiddleware"],
+            ["AuthMiddleware", "CORSMiddleware", "UiLanguageMiddleware"],
         )
 
     def test_enabled_without_package_raises_clear_error(self):

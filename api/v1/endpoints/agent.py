@@ -21,7 +21,7 @@ from src.services.agent_chat_session_service import AgentChatSessionService
 from src.services.agent_model_service import list_agent_model_deployments
 from src.report_language import localize_strategy_skill
 from src.storage import ChatSessionStateConflict
-from src.ui_language import is_english_ui, ui_text
+from src.ui_language import current_ui_language, ui_text
 
 # Tool name -> Chinese display name mapping
 TOOL_DISPLAY_NAMES: Dict[str, str] = {
@@ -60,6 +60,31 @@ TOOL_DISPLAY_NAMES_EN: Dict[str, str] = {
     "get_skill_backtest_summary": "Fetch skill backtest summary",
     "get_strategy_backtest_summary": "Fetch strategy backtest summary",
     "get_stock_backtest_summary": "Fetch stock backtest data",
+}
+
+TOOL_DISPLAY_NAMES_KO: Dict[str, str] = {
+    "get_realtime_quote":         "실시간 시세 조회",
+    "get_daily_history":          "일봉 이력 조회",
+    "get_chip_distribution":      "매물대 분포 분석",
+    "get_analysis_context":       "분석 컨텍스트 조회",
+    "get_stock_info":             "종목 펀더멘털 조회",
+    "search_stock_news":          "종목 뉴스 검색",
+    "search_comprehensive_intel": "종합 정보 검색",
+    "analyze_trend":              "기술적 추세 분석",
+    "calculate_ma":               "이동평균선 계산",
+    "get_volume_analysis":        "거래량 변화 분석",
+    "analyze_pattern":            "캔들 패턴 식별",
+    "get_market_indices":         "시장 지수 조회",
+    "get_sector_rankings":        "업종 분석",
+    "get_skill_backtest_summary": "스킬 백테스트 요약 조회",
+    "get_strategy_backtest_summary": "전략 백테스트 요약 조회",
+    "get_stock_backtest_summary": "종목 백테스트 데이터 조회",
+}
+
+_TOOL_DISPLAY_NAMES_BY_LANGUAGE: Dict[str, Dict[str, str]] = {
+    "zh": TOOL_DISPLAY_NAMES,
+    "en": TOOL_DISPLAY_NAMES_EN,
+    "ko": TOOL_DISPLAY_NAMES_KO,
 }
 
 logger = logging.getLogger(__name__)
@@ -236,10 +261,17 @@ def _agent_status_response(payload: Dict[str, Any]) -> AgentBackendStatusRespons
 
 
 def _skill_name(skill) -> str:
-    if not is_english_ui():
+    language = current_ui_language()
+    if language == "zh":
         return skill.display_name
-    name = localize_strategy_skill(skill.name, "en")
+    name = localize_strategy_skill(skill.name, language)
     return skill.display_name if name == skill.name else name
+
+
+def _skill_description(skill) -> str:
+    language = current_ui_language()
+    localized = skill.description_en if language == "en" else skill.description_ko if language == "ko" else None
+    return localized or skill.description
 
 
 def _build_skills_response(config) -> SkillsResponse:
@@ -263,7 +295,7 @@ def _build_skills_response(config) -> SkillsResponse:
         SkillInfo(
             id=skill.name,
             name=_skill_name(skill),
-            description=(skill.description_en if is_english_ui() else None) or skill.description,
+            description=_skill_description(skill),
         )
         for skill in available_skills
     ]
@@ -583,7 +615,7 @@ async def agent_chat_stream(
         # Enrich tool events with display names
         if event.get("type") in ("tool_start", "tool_done"):
             tool = event.get("tool", "")
-            event["display_name"] = (TOOL_DISPLAY_NAMES_EN if is_english_ui() else TOOL_DISPLAY_NAMES).get(tool, tool)
+            event["display_name"] = _TOOL_DISPLAY_NAMES_BY_LANGUAGE[current_ui_language()].get(tool, tool)
         asyncio.run_coroutine_threadsafe(queue.put(event), loop)
 
     def run_sync(executor, turn):
@@ -660,7 +692,7 @@ async def agent_chat_stream(
                 try:
                     event = await asyncio.wait_for(queue.get(), timeout=300.0)
                 except asyncio.TimeoutError:
-                    event = {"type": "error", "message": ui_text("分析超时", "Analysis timed out")}
+                    event = {"type": "error", "message": ui_text("分析超时", "Analysis timed out", "분석 시간이 초과되었습니다")}
                     yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
                     break
                 yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"

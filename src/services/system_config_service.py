@@ -553,6 +553,7 @@ class SystemConfigService:
                 message=ui_text(
                     f"通知渠道配置不完整，缺少: {', '.join(missing)}",
                     f"Notification channel configuration is incomplete. Missing: {', '.join(missing)}",
+                    f"알림 채널 설정이 불완전합니다. 누락 항목: {', '.join(missing)}",
                 ),
                 error_code="config_missing",
                 stage="config_validation",
@@ -590,7 +591,7 @@ class SystemConfigService:
             error_code, retryable = self._classify_notification_exception(exc)
             return self._build_notification_test_result(
                 success=False,
-                message=ui_text(f"通知测试异常: {exc}", f"Notification test error: {exc}"),
+                message=ui_text(f"通知测试异常: {exc}", f"Notification test error: {exc}", f"알림 테스트 오류: {exc}"),
                 error_code=error_code,
                 stage="notification_send",
                 retryable=retryable,
@@ -2194,7 +2195,7 @@ class SystemConfigService:
             )
             warnings.append(
                 (
-                    ui_text("新闻窗口已按策略计算：", "News window computed from strategy: ")
+                    ui_text("新闻窗口已按策略计算：", "News window computed from strategy: ", "뉴스 기간이 전략에 따라 계산되었습니다: ")
                     + f"NEWS_STRATEGY_PROFILE={profile}, "
                     f"NEWS_MAX_AGE_DAYS={max_age}, "
                     f"effective_days={effective_days} "
@@ -2214,6 +2215,8 @@ class SystemConfigService:
                         "若当前存在运行中任务，将在队列空闲后生效。",
                         f"MAX_WORKERS={max_workers} saved. It is applied automatically once the task queue is idle; "
                         "if tasks are currently running, it takes effect after the queue becomes idle.",
+                        f"MAX_WORKERS={max_workers}이(가) 저장되었습니다. 작업 대기열이 유휴 상태가 되면 자동으로 적용되며, "
+                        "현재 실행 중인 작업이 있으면 대기열이 유휴 상태가 된 후 적용됩니다.",
                     )
                 )
             else:
@@ -2223,6 +2226,8 @@ class SystemConfigService:
                         "（reload_now=false）；重载后才会应用。",
                         f"MAX_WORKERS={max_workers} was written to .env, but no runtime reload was triggered "
                         "(reload_now=false); it applies after a reload.",
+                        f"MAX_WORKERS={max_workers}이(가) .env에 기록되었지만 이번에는 런타임 재로드가 실행되지 않았습니다"
+                        "(reload_now=false). 재로드 후에 적용됩니다.",
                     )
                 )
 
@@ -2239,6 +2244,9 @@ class SystemConfigService:
                     "This is a startup-time one-shot run setting: the running WebUI/API process will not "
                     "start an analysis because of this save; restart the process and run in non-schedule mode "
                     "for the new value to take effect.",
+                    f"{', '.join(sorted(startup_only_run_keys))}이(가) .env에 기록되었습니다. "
+                    "시작 시 1회 실행 설정이므로, 현재 실행 중인 WebUI/API 프로세스는 이번 저장으로 분석을 바로 시작하지 않습니다. "
+                    "프로세스를 재시작한 후 non-schedule 모드에서 새 값이 적용됩니다.",
                 )
             )
 
@@ -2255,6 +2263,9 @@ class SystemConfigService:
                     "These are startup-time schedule-mode settings: the running WebUI/API process will not "
                     "start, stop or rebuild the scheduler because of this save; restart the process in "
                     "schedule mode for them to take effect.",
+                    f"{', '.join(sorted(startup_only_schedule_keys))}이(가) .env에 기록되었습니다. "
+                    "시작 시 스케줄 모드 설정이므로, 현재 실행 중인 WebUI/API 프로세스는 이번 저장으로 scheduler를 시작, "
+                    "중지 또는 재구성하지 않습니다. 프로세스를 schedule 모드로 재시작해야 적용됩니다.",
                 )
             )
 
@@ -2269,6 +2280,9 @@ class SystemConfigService:
                     "If the current process is a long-running WebUI/API/Desktop process, the runtime "
                     "scheduler starts or stops per the new setting; CLI schedule mode still follows its "
                     "startup arguments and config.",
+                    f"SCHEDULE_ENABLED={schedule_enabled}이(가) .env에 기록되었습니다. "
+                    "현재 프로세스가 장기 실행 중인 WebUI/API/Desktop 프로세스라면 runtime scheduler가 새 설정에 따라 "
+                    "시작 또는 중지됩니다. CLI schedule 모드는 여전히 시작 인수와 설정을 따릅니다.",
                 )
             )
 
@@ -2284,6 +2298,9 @@ class SystemConfigService:
                     f"SCHEDULE_TIMES={effective} written to .env. "
                     "Valid times are de-duplicated and sorted; when empty, SCHEDULE_TIME is still used. "
                     "If a runtime scheduler exists in the current process, daily jobs are rebuilt with the new times.",
+                    f"SCHEDULE_TIMES={effective}이(가) .env에 기록되었습니다. "
+                    "유효한 시각은 중복 제거 후 정렬되며, 비어 있으면 계속 SCHEDULE_TIME을 사용합니다. "
+                    "현재 프로세스에 runtime scheduler가 있으면 새 시각으로 daily jobs를 재구성합니다.",
                 )
             )
 
@@ -2297,6 +2314,9 @@ class SystemConfigService:
                     f"SCHEDULE_TIME={schedule_time} written to .env. "
                     "If the current process already runs in schedule mode, the scheduler rebuilds the daily job "
                     "on its next check; otherwise this save will not start the scheduler.",
+                    f"SCHEDULE_TIME={schedule_time}이(가) .env에 기록되었습니다. "
+                    "현재 프로세스가 이미 schedule 모드로 실행 중이면 scheduler가 다음 점검 시 daily job을 자동으로 재구성합니다. "
+                    "schedule 모드로 실행 중이 아니면 이번 저장으로 scheduler가 시작되지 않습니다.",
                 )
             )
 
@@ -2314,6 +2334,9 @@ class SystemConfigService:
                     "These are startup-time listener settings: the running WebUI/API process will not rebind "
                     "its address or port because of this save; restart the process, Docker container or "
                     "service manager for them to take effect.",
+                    f"{', '.join(sorted(startup_only_bind_keys))}이(가) .env에 기록되었습니다. "
+                    "시작 시 리스너 설정이므로, 현재 실행 중인 WebUI/API 프로세스는 이번 저장으로 주소나 포트를 다시 바인딩하지 않습니다. "
+                    "프로세스, Docker 컨테이너 또는 서비스 관리자를 재시작해야 적용됩니다.",
                 )
             )
 
@@ -2327,9 +2350,9 @@ class SystemConfigService:
     ) -> List[str]:
         """Explain when save payload clears stale runtime model references."""
         runtime_labels = {
-            "LITELLM_MODEL": ui_text("主模型", "Primary model"),
-            "AGENT_LITELLM_MODEL": ui_text("Agent 主模型", "Agent primary model"),
-            "VISION_MODEL": ui_text("Vision 模型", "Vision model"),
+            "LITELLM_MODEL": ui_text("主模型", "Primary model", "기본 모델"),
+            "AGENT_LITELLM_MODEL": ui_text("Agent 主模型", "Agent primary model", "Agent 기본 모델"),
+            "VISION_MODEL": ui_text("Vision 模型", "Vision model", "Vision 모델"),
         }
         cleared_labels: List[str] = []
         for key, label in runtime_labels.items():
@@ -2355,7 +2378,7 @@ class SystemConfigService:
 
         cleaned_targets = list(cleared_labels)
         if removed_fallbacks:
-            cleaned_targets.append(ui_text("备选模型中的失效项", "stale fallback models"))
+            cleaned_targets.append(ui_text("备选模型中的失效项", "stale fallback models", "대체 모델 중 무효 항목"))
 
         cleaned_text = " / ".join(cleaned_targets)
         warning = ui_text(
@@ -2368,6 +2391,10 @@ class SystemConfigService:
             "you can also restore the previous LLM_* / "
             "LITELLM_MODEL / AGENT_LITELLM_MODEL / VISION_MODEL / LLM_TEMPERATURE values "
             "from a desktop export backup or manually via .env.",
+            f"무효한 런타임 모델 참조를 감지하여 함께 정리했습니다: {cleaned_text}. "
+            "복원하려면 먼저 해당 채널 모델 목록에 모델을 다시 추가한 후 다시 선택하십시오. "
+            "데스크톱 내보내기 백업이나 .env를 수동으로 사용하여 이전 LLM_* / "
+            "LITELLM_MODEL / AGENT_LITELLM_MODEL / VISION_MODEL / LLM_TEMPERATURE 값을 복원할 수도 있습니다.",
         )
         return [warning]
 
@@ -2402,6 +2429,11 @@ class SystemConfigService:
                 "The Hermes reserved channel supports only a single LLM_HERMES_API_KEY, not multiple keys or extra headers; "
                 "to restore old values, do so manually from a .env backup, Git history or a desktop export backup, "
                 "but non-empty LLM_HERMES_API_KEYS / LLM_HERMES_EXTRA_HEADERS will still be rejected by backend validation.",
+                "Hermes Phase 3에서 지원하지 않는 설정 항목을 정리했습니다: "
+                f"{', '.join(cleared)}. "
+                "Hermes reserved channel은 단일 LLM_HERMES_API_KEY만 지원하며, 여러 키나 추가 Header는 지원하지 않습니다. "
+                "이전 값을 복원하려면 .env 백업, Git 기록 또는 데스크톱 내보내기 백업에서 수동으로 복원하십시오. "
+                "단, 비어 있지 않은 LLM_HERMES_API_KEYS / LLM_HERMES_EXTRA_HEADERS는 여전히 백엔드 검증에서 거부됩니다.",
             )
         ]
 
@@ -2422,7 +2454,7 @@ class SystemConfigService:
         """Parse raw `.env` text into update items without expanding app templates."""
         normalized_content = content.replace("\ufeff", "")
         if not normalized_content.strip():
-            raise ConfigImportError(ui_text("未识别到有效 .env 配置", "No valid .env configuration recognized"))
+            raise ConfigImportError(ui_text("未识别到有效 .env 配置", "No valid .env configuration recognized", "유효한 .env 설정을 인식하지 못했습니다"))
 
         from dotenv import dotenv_values
 
@@ -2439,7 +2471,7 @@ class SystemConfigService:
             )
 
         if not updates:
-            raise ConfigImportError(ui_text("未识别到有效 .env 配置", "No valid .env configuration recognized"))
+            raise ConfigImportError(ui_text("未识别到有效 .env 配置", "No valid .env configuration recognized", "유효한 .env 설정을 인식하지 못했습니다"))
 
         return updates
 
@@ -3124,6 +3156,7 @@ class SystemConfigService:
             return ui_text(
                 "NTFY_URL 必须包含 topic path，例如 https://ntfy.sh/my-topic。",
                 "NTFY_URL must include a topic path, e.g. https://ntfy.sh/my-topic.",
+                "NTFY_URL에는 topic path가 포함되어야 합니다. 예: https://ntfy.sh/my-topic.",
             )
         if channel == "gotify":
             gotify_url = (effective_map.get("GOTIFY_URL") or "").strip()
@@ -3134,6 +3167,7 @@ class SystemConfigService:
             return ui_text(
                 "GOTIFY_URL 必须是 Gotify server base URL，不包含 /message。",
                 "GOTIFY_URL must be the Gotify server base URL, without /message.",
+                "GOTIFY_URL은 /message를 포함하지 않은 Gotify server base URL이어야 합니다.",
             )
         return None
 
@@ -3205,11 +3239,11 @@ class SystemConfigService:
             total_count = len(attempts)
             success = success_count > 0
             if success_count == total_count and total_count > 0:
-                message = ui_text(f"自定义 Webhook 通知测试成功（{success_count}/{total_count}）", f"Custom webhook notification test succeeded ({success_count}/{total_count})")
+                message = ui_text(f"自定义 Webhook 通知测试成功（{success_count}/{total_count}）", f"Custom webhook notification test succeeded ({success_count}/{total_count})", f"사용자 정의 Webhook 알림 테스트 성공({success_count}/{total_count})")
             elif success_count > 0:
-                message = ui_text(f"自定义 Webhook 通知测试部分成功（{success_count}/{total_count}）", f"Custom webhook notification test partially succeeded ({success_count}/{total_count})")
+                message = ui_text(f"自定义 Webhook 通知测试部分成功（{success_count}/{total_count}）", f"Custom webhook notification test partially succeeded ({success_count}/{total_count})", f"사용자 정의 Webhook 알림 테스트 일부 성공({success_count}/{total_count})")
             else:
-                message = ui_text(f"自定义 Webhook 通知测试失败（{success_count}/{total_count}）", f"Custom webhook notification test failed ({success_count}/{total_count})")
+                message = ui_text(f"自定义 Webhook 通知测试失败（{success_count}/{total_count}）", f"Custom webhook notification test failed ({success_count}/{total_count})", f"사용자 정의 Webhook 알림 테스트 실패({success_count}/{total_count})")
             return self._build_notification_test_result(
                 success=success,
                 message=message,
@@ -3241,7 +3275,7 @@ class SystemConfigService:
         attempt = {
             "channel": channel,
             "success": ok,
-            "message": ui_text("通知测试发送成功", "Notification test sent successfully") if ok else ui_text("通知测试发送失败", "Notification test failed to send"),
+            "message": ui_text("通知测试发送成功", "Notification test sent successfully", "알림 테스트를 전송했습니다") if ok else ui_text("通知测试发送失败", "Notification test failed to send", "알림 테스트 전송에 실패했습니다"),
             "target": target,
             "error_code": None if ok else "send_failed",
             "stage": "notification_send",
@@ -3250,7 +3284,7 @@ class SystemConfigService:
         }
         return self._build_notification_test_result(
             success=ok,
-            message=ui_text(f"{channel} 通知测试成功", f"{channel} notification test succeeded") if ok else ui_text(f"{channel} 通知测试失败", f"{channel} notification test failed"),
+            message=ui_text(f"{channel} 通知测试成功", f"{channel} notification test succeeded", f"{channel} 알림 테스트 성공") if ok else ui_text(f"{channel} 通知测试失败", f"{channel} notification test failed", f"{channel} 알림 테스트 실패"),
             error_code=None if ok else "send_failed",
             stage="notification_send",
             retryable=False,
@@ -4720,6 +4754,10 @@ class SystemConfigService:
                         "App Bot push also requires FEISHU_CHAT_ID, "
                         "for Webhook push set FEISHU_WEBHOOK_URL; "
                         "for event subscriptions use FEISHU_STREAM_ENABLED=true and complete app publishing and permission setup.",
+                        "FEISHU_APP_ID / FEISHU_APP_SECRET만 설정하면 Feishu 정적 알림이 활성화되지 않습니다. "
+                        "App Bot 푸시에는 FEISHU_CHAT_ID도 함께 설정해야 하며, "
+                        "Webhook 푸시는 FEISHU_WEBHOOK_URL을 입력하십시오. "
+                        "이벤트 구독은 FEISHU_STREAM_ENABLED=true를 사용하고 앱 게시 및 권한 설정을 완료하십시오.",
                     ),
                     "severity": "warning",
                     "expected": (

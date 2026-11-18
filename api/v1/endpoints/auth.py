@@ -223,25 +223,25 @@ async def auth_update_settings(request: Request, body: AuthSettingsRequest):
                     status_code=400,
                     content={
                         "error": "password_already_set",
-                        "message": ui_text("已存在管理员密码，请启用认证后通过修改密码功能更新", "An admin password already exists. Enable authentication and use change password to update it"),
+                        "message": ui_text("已存在管理员密码，请启用认证后通过修改密码功能更新", "An admin password already exists. Enable authentication and use change password to update it", "관리자 비밀번호가 이미 존재합니다. 인증을 활성화한 후 비밀번호 변경 기능으로 업데이트하십시오"),
                     },
                 )
             if not password:
                 return JSONResponse(
                     status_code=400,
-                    content={"error": "password_required", "message": ui_text("请输入要设置的管理员密码", "Enter the admin password to set")},
+                    content={"error": "password_required", "message": ui_text("请输入要设置的管理员密码", "Enter the admin password to set", "설정할 관리자 비밀번호를 입력하십시오")},
                 )
             if password != confirm:
                 return JSONResponse(
                     status_code=400,
-                    content={"error": "password_mismatch", "message": ui_text("两次输入的密码不一致", "The two passwords do not match")},
+                    content={"error": "password_mismatch", "message": ui_text("两次输入的密码不一致", "The two passwords do not match", "두 비밀번호가 일치하지 않습니다")},
                 )
             if has_stored_password():
                 return JSONResponse(
                     status_code=400,
                     content={
                         "error": "password_already_set",
-                        "message": ui_text("已存在管理员密码，请启用认证后通过修改密码功能更新", "An admin password already exists. Enable authentication and use change password to update it"),
+                        "message": ui_text("已存在管理员密码，请启用认证后通过修改密码功能更新", "An admin password already exists. Enable authentication and use change password to update it", "관리자 비밀번호가 이미 존재합니다. 인증을 활성화한 후 비밀번호 변경 기능으로 업데이트하십시오"),
                     },
                 )
             err = set_initial_password(password)
@@ -253,7 +253,7 @@ async def auth_update_settings(request: Request, body: AuthSettingsRequest):
         elif not stored_password_exists:
             return JSONResponse(
                 status_code=400,
-                content={"error": "password_required", "message": ui_text("开启密码登录前请先设置密码", "Set a password before enabling password login")},
+                content={"error": "password_required", "message": ui_text("开启密码登录前请先设置密码", "Set a password before enabling password login", "비밀번호 로그인을 활성화하기 전에 비밀번호를 설정하십시오")},
             )
         else:
             # P1 Vulnerability Fix: Enforce current-password check independent of global cached flag
@@ -268,7 +268,7 @@ async def auth_update_settings(request: Request, body: AuthSettingsRequest):
                 if not current_password:
                     return JSONResponse(
                         status_code=400,
-                        content={"error": "current_required", "message": ui_text("重新开启认证前请输入当前密码", "Enter the current password before re-enabling authentication")},
+                        content={"error": "current_required", "message": ui_text("重新开启认证前请输入当前密码", "Enter the current password before re-enabling authentication", "인증을 다시 활성화하기 전에 현재 비밀번호를 입력하십시오")},
                     )
                 ip = get_client_ip(request)
                 if not check_rate_limit(ip):
@@ -283,7 +283,7 @@ async def auth_update_settings(request: Request, body: AuthSettingsRequest):
                     record_login_failure(ip)
                     return JSONResponse(
                         status_code=401,
-                        content={"error": "invalid_password", "message": ui_text("当前密码错误", "Current password is incorrect")},
+                        content={"error": "invalid_password", "message": ui_text("当前密码错误", "Current password is incorrect", "현재 비밀번호가 올바르지 않습니다")},
                     )
                 clear_rate_limit(ip)
     else:
@@ -296,7 +296,7 @@ async def auth_update_settings(request: Request, body: AuthSettingsRequest):
             if not current_password:
                 return JSONResponse(
                     status_code=400,
-                    content={"error": "current_required", "message": ui_text("关闭认证前请输入当前密码", "Enter the current password before disabling authentication")},
+                    content={"error": "current_required", "message": ui_text("关闭认证前请输入当前密码", "Enter the current password before disabling authentication", "인증을 비활성화하기 전에 현재 비밀번호를 입력하십시오")},
                 )
             ip = get_client_ip(request)
             if not check_rate_limit(ip):
@@ -311,7 +311,7 @@ async def auth_update_settings(request: Request, body: AuthSettingsRequest):
                 record_login_failure(ip)
                 return JSONResponse(
                     status_code=401,
-                    content={"error": "invalid_password", "message": ui_text("当前密码错误", "Current password is incorrect")},
+                    content={"error": "invalid_password", "message": ui_text("当前密码错误", "Current password is incorrect", "현재 비밀번호가 올바르지 않습니다")},
                 )
             clear_rate_limit(ip)
 
@@ -377,7 +377,7 @@ async def auth_login(request: Request, body: LoginRequest):
     if not password:
         return JSONResponse(
             status_code=400,
-            content={"error": "password_required", "message": ui_text("请输入密码", "Enter a password")},
+            content={"error": "password_required", "message": ui_text("请输入密码", "Enter a password", "비밀번호를 입력하십시오")},
         )
 
     ip = get_client_ip(request)
@@ -413,7 +413,7 @@ async def auth_login(request: Request, body: LoginRequest):
             record_login_failure(ip)
             return JSONResponse(
                 status_code=401,
-                content={"error": "invalid_password", "message": ui_text("密码错误", "Incorrect password")},
+                content={"error": "invalid_password", "message": ui_text("密码错误", "Incorrect password", "비밀번호가 올바르지 않습니다")},
             )
 
     clear_rate_limit(ip)
@@ -449,12 +449,12 @@ async def auth_change_password(body: ChangePasswordRequest):
     if not current:
         return JSONResponse(
             status_code=400,
-            content={"error": "current_required", "message": ui_text("请输入当前密码", "Enter the current password")},
+            content={"error": "current_required", "message": ui_text("请输入当前密码", "Enter the current password", "현재 비밀번호를 입력하십시오")},
         )
     if new_pwd != new_confirm:
         return JSONResponse(
             status_code=400,
-            content={"error": "password_mismatch", "message": ui_text("两次输入的新密码不一致", "The two new passwords do not match")},
+            content={"error": "password_mismatch", "message": ui_text("两次输入的新密码不一致", "The two new passwords do not match", "두 새 비밀번호가 일치하지 않습니다")},
         )
 
     err = change_password(current, new_pwd)

@@ -107,7 +107,8 @@ def test_tw_missing_indices_remain_visible_in_report_payload_and_poster(language
             assert f"{code}:" in report
             assert f"{code}:" in html
     if "TWII" not in codes:
-        assert "指数数据不足" in report if language == "zh" else "insufficient index data" in report
+        expected_mood = {"zh": "指数数据不足", "en": "insufficient index data", "ko": "지수 데이터 부족"}[language]
+        assert expected_mood in report
     assert "A-share Market Recap" not in report
 
 

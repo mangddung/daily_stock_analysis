@@ -4468,7 +4468,7 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
                     .order_by(ConversationMessage.created_at)
                     .limit(1)
                 ).scalar()
-                title = (first_user_msg or ui_text("新对话", "New chat"))[:60]
+                title = (first_user_msg or ui_text("新对话", "New chat", "새 대화"))[:60]
 
                 results.append({
                     "session_id": sid,

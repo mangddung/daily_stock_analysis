@@ -108,7 +108,7 @@ def _screening_task_not_found(task_id: str) -> HTTPException:
     return api_error(
         404,
         "screening_screen_task_not_found",
-        ui_text(f"选股任务 {task_id} 不存在或已过期", f"Screening task {task_id} not found or expired"),
+        ui_text(f"选股任务 {task_id} 不存在或已过期", f"Screening task {task_id} not found or expired", f"종목 발굴 작업 {task_id}이(가) 존재하지 않거나 만료되었습니다"),
     )
 
 

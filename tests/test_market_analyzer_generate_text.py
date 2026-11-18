@@ -4104,6 +4104,68 @@ class TestMarketAnalyzerBypassFix:
         assert zh_label in zh_result
         assert "今日A股市场整体呈现" not in zh_result
 
+    def test_generate_template_review_uses_korean_template_for_no_llm_fallback(self):
+        import re
+
+        from src.core.market_profile import US_PROFILE
+        from src.core.market_strategy import get_market_strategy_blueprint
+        from src.market_analyzer import MarketOverview, MarketIndex
+
+        ma = self._make_market_analyzer_with_mock_generate_text(return_value=None)
+        ma.config.report_language = "ko"
+        ma.region = "us"
+        ma.profile = US_PROFILE
+        ma.strategy = get_market_strategy_blueprint("us")
+        overview = MarketOverview(
+            date="2026-11-18",
+            indices=[
+                MarketIndex(code="SPX", name="S&P 500", current=7340.53, change=-76.0, change_pct=-1.03),
+                MarketIndex(code="DJI", name="다우존스 산업평균지수", current=50759.42, change=-846.0, change_pct=-1.64),
+            ],
+        )
+
+        result = ma.generate_market_review(overview, [])
+
+        assert "## 2026-11-18 미국 시황 리뷰" in result
+        assert "### 1. 시장 요약" in result
+        assert "오늘 미국 증시는 **뚜렷한 약세** 흐름을 보였습니다." in result
+        assert "### 3. 시장 폭과 유동성" in result
+        assert "- **시장 신호**:" in result
+        assert "### 5. 리스크 경고" in result
+        assert "### 6. 전략 프레임워크" in result
+        assert "*리뷰 시각:" in result
+        # No English scaffolding or Chinese text may leak into the Korean fallback.
+        assert "Market Summary" not in result
+        assert "Strategy Framework" not in result
+        assert "Guidance" not in result
+        assert not re.search(r"[一-鿿]", result)
+
+    @pytest.mark.parametrize(
+        ("language", "expected"),
+        [("zh", "标普500指数"), ("en", "S&P 500"), ("ko", "S&P 500")],
+    )
+    def test_get_main_indices_localizes_index_names(self, language, expected):
+        ma = self._make_market_analyzer_with_mock_generate_text(return_value=None)
+        ma.config.report_language = language
+        ma.data_manager = MagicMock()
+        ma.data_manager.get_main_indices.return_value = [
+            {
+                "code": "SPX", "name": "标普500指数", "current": 7340.53, "change": -76.0,
+                "change_pct": -1.03, "open": 0.0, "high": 0.0, "low": 0.0, "prev_close": 0.0,
+                "volume": 0.0, "amount": 0.0, "amplitude": 0.0,
+            },
+            {
+                "code": "VIX", "name": "VIX恐慌指数", "current": 25.46, "change": 2.5,
+                "change_pct": 11.13, "open": 0.0, "high": 0.0, "low": 0.0, "prev_close": 0.0,
+                "volume": 0.0, "amount": 0.0, "amplitude": 0.0,
+            },
+        ]
+
+        names = [idx.name for idx in ma._get_main_indices()]
+
+        assert names[0] == expected
+        assert names[1] == {"zh": "VIX恐慌指数", "en": "VIX", "ko": "VIX 공포지수"}[language]
+
     def test_inject_data_into_review_matches_english_headings(self):
         from src.market_analyzer import MarketOverview, MarketIndex
 

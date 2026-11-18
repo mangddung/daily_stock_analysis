@@ -5,6 +5,7 @@ name: wave_theory
 display_name: 波浪理论
 description: 基于艾略特波浪理论的推动浪与调整浪结构，判断当前所处浪型与潜在目标价。
 description_en: "Uses Elliott wave impulse and corrective structures to judge the current wave position and potential price targets."
+description_ko: "엘리엇 파동의 충격파와 조정파 구조를 바탕으로 현재 파동 위치와 잠재 목표가를 판단합니다."
 category: framework
 core_rules: [1, 2, 3, 4]
 required_tools:

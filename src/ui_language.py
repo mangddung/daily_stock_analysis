@@ -2,8 +2,8 @@
 """Per-request Web UI language for backend-generated display text.
 
 The web client sends ``X-DSA-UI-Language`` on every API request. UiLanguageMiddleware
-stores it in a ContextVar so any code handling the request can pick zh/en text with
-``ui_text(zh, en)`` without threading a parameter through every call. Requests without
+stores it in a ContextVar so any code handling the request can pick zh/en/ko text with
+``ui_text(zh, en, ko)`` without threading a parameter through every call. Requests without
 the header (bots, CLI, desktop clients that don't send it) keep the Chinese default.
 """
 
@@ -25,14 +25,18 @@ def is_english_ui() -> bool:
     return _ui_language.get() == "en"
 
 
-def ui_text(zh: str, en: str) -> str:
-    """Return the English text for English UI requests, Chinese otherwise."""
-    return en if _ui_language.get() == "en" else zh
+def ui_text(zh: str, en: str, ko: str | None = None) -> str:
+    """Return the text for the request's UI language (Korean falls back to English when ko is missing)."""
+    language = _ui_language.get()
+    if language == "ko":
+        return ko if ko is not None else en
+    return en if language == "en" else zh
 
 
 def set_ui_language(value: str | None):
     """Set the language for the current context; returns a token for reset."""
-    language = "en" if (value or "").strip().lower().startswith("en") else "zh"
+    normalized = (value or "").strip().lower()
+    language = "en" if normalized.startswith("en") else "ko" if normalized.startswith("ko") else "zh"
     return _ui_language.set(language)
 
 

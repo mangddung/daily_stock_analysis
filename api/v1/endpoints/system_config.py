@@ -174,7 +174,7 @@ def get_system_config(
     description="Read a side-effect-free setup readiness summary from saved and runtime configuration.",
 )
 def get_setup_status(
-    language: Optional[str] = Query(None, description="UI language for check text: zh (default) or en"),
+    language: Optional[str] = Query(None, description="UI language for check text: zh (default), en or ko"),
     service: SystemConfigService = Depends(get_system_config_service),
 ) -> SetupStatusResponse:
     """Return first-run setup status without writing config or reloading runtime state."""

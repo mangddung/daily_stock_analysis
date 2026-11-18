@@ -4,6 +4,7 @@ name: growth_quality
 display_name: 成长质量
 description: 结合收入利润增长、ROE、现金流和行业空间，识别高质量成长股与成长失速风险。
 description_en: "Combines revenue and profit growth, ROE, cash flow and industry headroom to identify high-quality growth stocks and growth-stall risk."
+description_ko: "매출·이익 성장, ROE, 현금흐름 및 업종 성장 여력을 종합해 고품질 성장주와 성장 둔화 위험을 식별합니다."
 category: framework
 core_rules: [2, 3, 5]
 required_tools:

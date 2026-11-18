@@ -4,16 +4,28 @@
 from pathlib import Path
 
 from src.agent.skills.base import load_skill_from_yaml
-from src.agent.runner import _THINKING_TOOL_LABELS, _THINKING_TOOL_LABELS_EN
-from api.v1.endpoints.agent import TOOL_DISPLAY_NAMES, TOOL_DISPLAY_NAMES_EN, _skill_name
+from src.agent.runner import _THINKING_TOOL_LABELS, _THINKING_TOOL_LABELS_EN, _THINKING_TOOL_LABELS_KO
+from api.v1.endpoints.agent import TOOL_DISPLAY_NAMES, TOOL_DISPLAY_NAMES_EN, TOOL_DISPLAY_NAMES_KO, _skill_description, _skill_name
 from src.ui_language import set_ui_language, _ui_language
 
 STRATEGIES = sorted(Path(__file__).resolve().parents[1].glob("strategies/*.yaml"))
 
 
 def test_tool_label_maps_cover_same_tools():
-    assert TOOL_DISPLAY_NAMES.keys() == TOOL_DISPLAY_NAMES_EN.keys()
-    assert _THINKING_TOOL_LABELS.keys() == _THINKING_TOOL_LABELS_EN.keys()
+    assert TOOL_DISPLAY_NAMES.keys() == TOOL_DISPLAY_NAMES_EN.keys() == TOOL_DISPLAY_NAMES_KO.keys()
+    assert _THINKING_TOOL_LABELS.keys() == _THINKING_TOOL_LABELS_EN.keys() == _THINKING_TOOL_LABELS_KO.keys()
+
+
+def test_all_strategies_have_korean_name_and_description():
+    token = set_ui_language("ko")
+    try:
+        for path in STRATEGIES:
+            skill = load_skill_from_yaml(path)
+            assert skill.description_ko, path.name
+            assert _skill_description(skill) == skill.description_ko, path.name
+            assert _skill_name(skill) != skill.display_name, path.name
+    finally:
+        _ui_language.reset(token)
 
 
 def test_all_strategies_have_english_name_and_description():

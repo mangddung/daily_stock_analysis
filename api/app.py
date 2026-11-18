@@ -368,6 +368,9 @@ def create_app(static_dir: Optional[Path] = None) -> FastAPI:
         _warn_if_open_cors_without_auth()
         allowed_origins = ["*"]
     
+    # Innermost: sets the per-request UI language for route handlers and exception handlers.
+    app.add_middleware(UiLanguageMiddleware)
+
     # Optional fastapi-guard (GUARD_ENABLED, default off). Starlette makes the last
     # added middleware the outermost, so with the guard on the order is
     # CORS > guard > auth: guard 429/403 responses carry CORS headers and the guard
@@ -387,8 +390,6 @@ def create_app(static_dir: Optional[Path] = None) -> FastAPI:
 
     if not guard_enabled:
         add_auth_middleware(app)
-
-    app.add_middleware(UiLanguageMiddleware)
 
     # ============================================================
     # 注册路由

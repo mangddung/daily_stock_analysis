@@ -39,6 +39,15 @@ class SetupStatusI18nTest(unittest.TestCase):
         self.assertEqual(checks[2]["message"], "Database path is available: /app/data/stock_analysis.db")
         self.assertEqual(checks[3]["message"], "Detected explicit primary model: openai/gpt-4o")
 
+    def test_korean_translates_titles_messages_and_dynamic_values(self):
+        checks = localize_setup_status(_payload(), "ko")["checks"]
+        self.assertEqual(checks[0]["title"], "기본 LLM 채널")
+        self.assertEqual(checks[0]["message"], "기본 모델 설정이 감지되지 않았습니다.")
+        self.assertIn("LITELLM_MODEL", checks[0]["next_step"])
+        self.assertEqual(checks[1]["message"], "종목 2개가 설정되었습니다.")
+        self.assertEqual(checks[2]["message"], "데이터베이스 경로를 사용할 수 있습니다: /app/data/stock_analysis.db")
+        self.assertEqual(checks[3]["message"], "명시적 기본 모델 감지됨: openai/gpt-4o")
+
     def test_unknown_text_falls_back_to_original(self):
         payload = {"checks": [{"key": "other", "title": "其他", "message": "未知文案", "next_step": None}]}
         check = localize_setup_status(payload, "en")["checks"][0]

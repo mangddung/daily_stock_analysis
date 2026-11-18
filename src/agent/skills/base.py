@@ -78,6 +78,7 @@ class Skill:
     subagent_type: str = ""
     preferred_model: str = ""
     description_en: Optional[str] = None
+    description_ko: Optional[str] = None
 
 
 _FRONTMATTER_RE = re.compile(r"^---\s*\r?\n(.*?)\r?\n---\s*\r?\n?(.*)$", re.DOTALL)
@@ -179,6 +180,7 @@ def load_skill_from_yaml(filepath: Union[str, Path]) -> Skill:
         display_name=str(data["display_name"]).strip(),
         description=str(data["description"]).strip(),
         description_en=str(data.get("description_en") or "").strip() or None,
+        description_ko=str(data.get("description_ko") or "").strip() or None,
         instructions=str(data["instructions"]).strip(),
         category=str(data.get("category", "trend")).strip(),
         core_rules=data.get("core_rules", []) or [],
