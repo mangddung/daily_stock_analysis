@@ -18,6 +18,7 @@ import { useAgentChatStore } from './stores/agentChatStore';
 import { resolveLoginRedirect } from './utils/loginRedirect';
 import './App.css';
 
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
 const BacktestPage = lazy(() => import('./pages/BacktestPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
@@ -88,7 +89,8 @@ const AppContent: React.FC = () => {
 };
 
 const routeChildren = [
-  { path: '/', element: <HomePage /> },
+  { path: '/', element: <DashboardPage /> },
+  { path: '/analysis', element: <HomePage /> },
   { path: '/chat', element: <ChatPage /> },
   { path: '/portfolio', element: <PortfolioPage /> },
   { path: '/decision-signals', element: <DecisionSignalsPage /> },

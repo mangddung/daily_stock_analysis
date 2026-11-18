@@ -342,7 +342,7 @@ describe('StockScreeningPage', () => {
     expect(screen.queryByText(/last_good_cache|置信 65%/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '分析 中际旭创' }));
-    expect(navigate).toHaveBeenCalledWith('/', {
+    expect(navigate).toHaveBeenCalledWith('/analysis', {
       state: {
         stockCode: '300000',
         stockName: '中际旭创',
@@ -1176,7 +1176,7 @@ describe('StockScreeningPage', () => {
     }
     fireEvent.click(screen.getByRole('button', { name: '进一步深度分析' }));
 
-    expect(navigate).toHaveBeenCalledWith('/', {
+    expect(navigate).toHaveBeenCalledWith('/analysis', {
       state: {
         stockCode: '600519',
         stockName: '贵州茅台',

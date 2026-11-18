@@ -31,6 +31,10 @@ vi.mock('./pages/HomePage', () => ({
   default: () => <div data-testid="home-page">Home</div>,
 }));
 
+vi.mock('./pages/DashboardPage', () => ({
+  default: () => <div data-testid="dashboard-page">Dashboard</div>,
+}));
+
 vi.mock('./pages/ChatPage', () => ({
   default: () => {
     if (chatPageShouldThrow.value) {
@@ -190,9 +194,18 @@ describe('App routing behavior', () => {
 
     render(<App />);
 
-    expect(await screen.findByTestId('home-page')).toBeInTheDocument();
+    expect(await screen.findByTestId('dashboard-page')).toBeInTheDocument();
     expect(window.location.origin).toBe(origin);
     expect(window.location.pathname + window.location.search + window.location.hash).toBe('/');
+  });
+
+  it('routes /analysis to the analysis page after auth is ready', async () => {
+    window.history.pushState({}, '', '/analysis');
+
+    render(<App />);
+
+    expect(await screen.findByTestId('home-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('dashboard-page')).not.toBeInTheDocument();
   });
 
   it('routes /usage to the token usage page after auth is ready', async () => {
@@ -234,7 +247,7 @@ describe('App routing behavior', () => {
 
     render(<App />);
 
-    expect(await screen.findByTestId('home-page')).toBeInTheDocument();
+    expect(await screen.findByTestId('dashboard-page')).toBeInTheDocument();
     expect(screen.queryByTestId('login-page')).not.toBeInTheDocument();
   });
 
