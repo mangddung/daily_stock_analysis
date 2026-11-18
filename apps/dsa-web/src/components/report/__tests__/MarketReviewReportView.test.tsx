@@ -2,6 +2,15 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { AnalysisReport, MarketReviewPayload } from '../../../types/analysis';
 import { MarketReviewReportView } from '../MarketReviewReportView';
+import type { ReactElement } from 'react';
+import { UiLanguageProvider } from '../../../contexts/UiLanguageContext';
+import type { UiLanguage } from '../../../i18n/uiText';
+import { UI_LANGUAGE_STORAGE_KEY } from '../../../utils/uiLanguage';
+
+const renderInUiLanguage = (ui: ReactElement, language: UiLanguage) => {
+  window.localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, language);
+  return render(<UiLanguageProvider>{ui}</UiLanguageProvider>);
+};
 
 vi.mock('../../../api/history', () => ({
   historyApi: {
@@ -107,12 +116,12 @@ const noBreadthMarketReviewPayload: MarketReviewPayload = {
 
 describe('MarketReviewReportView', () => {
   it('uses localized summary card labels and fallbacks for English reports', () => {
-    render(
+    renderInUiLanguage(
       <MarketReviewReportView
         report={englishMarketReviewReport}
         content="# Market Review"
-        reportLanguage="en"
       />,
+      'en',
     );
 
     expect(screen.getByText('Review Summary')).toBeInTheDocument();
@@ -132,7 +141,6 @@ describe('MarketReviewReportView', () => {
       <MarketReviewReportView
         payload={combinedMarketReviewPayload}
         content="# 大盘复盘"
-        reportLanguage="zh"
       />,
     );
 
@@ -149,7 +157,6 @@ describe('MarketReviewReportView', () => {
       <MarketReviewReportView
         payload={combinedMarketReviewPayload}
         content="# 大盘复盘"
-        reportLanguage="zh"
       />,
     );
 
@@ -166,7 +173,6 @@ describe('MarketReviewReportView', () => {
       <MarketReviewReportView
         payload={combinedMarketReviewPayload}
         content="# 大盘复盘"
-        reportLanguage="zh"
       />,
     );
 
@@ -185,12 +191,12 @@ describe('MarketReviewReportView', () => {
   });
 
   it('shows "No data" when breadth is not available for a market review payload', () => {
-    render(
+    renderInUiLanguage(
       <MarketReviewReportView
         payload={noBreadthMarketReviewPayload}
         content="# Market Review"
-        reportLanguage="en"
       />,
+      'en',
     );
 
     expect(screen.getByText('Structured Market Data')).toBeInTheDocument();
@@ -229,12 +235,12 @@ describe('MarketReviewReportView', () => {
       }],
     };
 
-    render(
+    renderInUiLanguage(
       <MarketReviewReportView
         payload={payload}
         content="# Market Review"
-        reportLanguage="en"
       />,
+      'en',
     );
 
     expect(screen.getByText('36822.50 bn')).toBeInTheDocument();
@@ -271,12 +277,12 @@ describe('MarketReviewReportView', () => {
       }],
     } as unknown as MarketReviewPayload;
 
-    render(
+    renderInUiLanguage(
       <MarketReviewReportView
         payload={payload}
         content="# Market Review"
-        reportLanguage="en"
       />,
+      'en',
     );
 
     expect(screen.getByText('4327')).toBeInTheDocument();
@@ -295,7 +301,6 @@ describe('MarketReviewReportView', () => {
         payload={combinedMarketReviewPayload}
         content="# 大盘复盘"
         recordId={7}
-        reportLanguage="zh"
         onOpenRunFlow={onOpenRunFlow}
       />,
     );

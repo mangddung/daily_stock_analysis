@@ -2368,7 +2368,7 @@ export const LLMChannelEditor: React.FC<LLMChannelEditorProps> = ({
             {tx('intro')}
           </p>
         </div>
-        <span className="text-xs text-muted-text">{isCollapsed ? tx('expand') : tx('collapse')}</span>
+        <span className="shrink-0 whitespace-nowrap text-xs text-muted-text">{isCollapsed ? tx('expand') : tx('collapse')}</span>
       </button>
 
       {!isCollapsed ? (

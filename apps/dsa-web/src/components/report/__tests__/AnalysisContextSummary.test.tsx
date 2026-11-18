@@ -9,6 +9,15 @@ import type {
 } from '../../../types/analysis';
 import { AnalysisContextSummary } from '../AnalysisContextSummary';
 import { ReportSummary } from '../ReportSummary';
+import type { ReactElement } from 'react';
+import { UiLanguageProvider } from '../../../contexts/UiLanguageContext';
+import type { UiLanguage } from '../../../i18n/uiText';
+import { UI_LANGUAGE_STORAGE_KEY } from '../../../utils/uiLanguage';
+
+const renderInUiLanguage = (ui: ReactElement, language: UiLanguage) => {
+  window.localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, language);
+  return render(<UiLanguageProvider>{ui}</UiLanguageProvider>);
+};
 
 vi.mock('../../../api/history', () => ({
   historyApi: {
@@ -161,7 +170,7 @@ describe('AnalysisContextSummary', () => {
   });
 
   it('localizes the collapsed summary for english reports', () => {
-    render(<AnalysisContextSummary overview={overview} language="en" />);
+    renderInUiLanguage(<AnalysisContextSummary overview={overview} />, 'en');
 
     const panel = screen.getByTestId('analysis-context-summary');
     expect(panel).not.toHaveAttribute('open');

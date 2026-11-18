@@ -30,7 +30,7 @@ function renderPhaseQuality(trigger: AlertTriggerItem, language: UiLanguage): Re
   }
   return (
     <div className="space-y-1">
-      {phase ? <Badge variant="default">{phase.replace(/^(市场阶段|Market phase)[:：]\s*/, '')}</Badge> : null}
+      {phase ? <Badge variant="default">{phase.replace(/^(市场阶段|Market phase|시장 단계)[:：]\s*/, '')}</Badge> : null}
       {quality ? <div className="text-xs text-secondary-text">{formatUiText(text.quality, { quality })}</div> : null}
       {limitations.length ? (
         <div className="max-w-[180px] text-xs text-muted-text">{limitations.join(text.limitationSeparator)}</div>

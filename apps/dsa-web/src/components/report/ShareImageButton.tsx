@@ -2,8 +2,8 @@ import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, Loader2, Share2, TriangleAlert } from 'lucide-react';
 import { historyApi } from '../../api/history';
-import type { ReportLanguage } from '../../types/analysis';
-import { getReportText, normalizeReportLanguage } from '../../utils/reportLanguage';
+import { getReportText } from '../../utils/reportLanguage';
+import { useUiLanguage } from '../../contexts/UiLanguageContext';
 import { Tooltip } from '../common/Tooltip';
 
 type DesktopWindow = Window & {
@@ -17,7 +17,6 @@ type ShareState = 'idle' | 'loading' | 'ready' | 'success' | 'error';
 interface ShareImageButtonProps {
   recordId?: number;
   reportTitle: string;
-  reportLanguage?: ReportLanguage;
   className?: string;
 }
 
@@ -38,13 +37,13 @@ const downloadBlob = (blob: Blob, filename: string): void => {
 export const ShareImageButton: React.FC<ShareImageButtonProps> = ({
   recordId,
   reportTitle,
-  reportLanguage = 'zh',
   className = '',
 }) => {
   const desktopRuntime = typeof window !== 'undefined' ? (window as DesktopWindow).dsaDesktop : undefined;
   const renderDesktopShareImage = desktopRuntime?.renderShareImage;
   const activeRecordId = desktopRuntime && !renderDesktopShareImage ? undefined : recordId;
-  const text = getReportText(normalizeReportLanguage(reportLanguage));
+  const { language } = useUiLanguage();
+  const text = getReportText(language);
   const [stateSnapshot, setStateSnapshot] = useState<{
     recordId?: number;
     state: ShareState;

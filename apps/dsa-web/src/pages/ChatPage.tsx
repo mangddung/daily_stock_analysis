@@ -34,6 +34,7 @@ import {
 import { useStockIndex } from '../hooks/useStockIndex';
 import { useUiLanguage } from '../contexts/UiLanguageContext';
 import type { UiTextParams } from '../i18n/uiText';
+import { getUiLocale } from '../utils/uiLanguage';
 import { chatText, type ChatTextKey } from '../locales/chat';
 
 // Quick question examples shown on empty state
@@ -537,7 +538,7 @@ const ChatPage: React.FC = () => {
     }
 
     const hydrationToken = ++followUpHydrationTokenRef.current;
-    setInput(buildFollowUpPrompt(stock, name));
+    setInput(buildFollowUpPrompt(stock, name, language));
     followUpContextRef.current = {
       stock_code: stock,
       stock_name: name,
@@ -561,7 +562,7 @@ const ChatPage: React.FC = () => {
       }
     });
     setSearchParams({}, { replace: true });
-  }, [searchParams, setSearchParams, stockIndex, stockIndexLoading, agentStatusChecking]);
+  }, [searchParams, setSearchParams, stockIndex, stockIndexLoading, agentStatusChecking, language]);
 
   const handleSend = useCallback(
     async (
@@ -855,7 +856,7 @@ const ChatPage: React.FC = () => {
                         <>
                           <span className="separator" />
                           <span className="meta">
-                            {new Date(s.last_active).toLocaleDateString(language === 'en' ? 'en-US' : 'zh-CN', { month: 'short', day: 'numeric' })}
+                            {new Date(s.last_active).toLocaleDateString(getUiLocale(language), { month: 'short', day: 'numeric' })}
                           </span>
                         </>
                       )}

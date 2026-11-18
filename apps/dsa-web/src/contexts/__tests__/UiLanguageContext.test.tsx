@@ -119,5 +119,27 @@ describe('UiLanguageContext', () => {
     expect(localStorage.getItem(UI_LANGUAGE_STORAGE_KEY)).toBe('en');
     expect(screen.getByRole('button', { name: 'Switch UI language' })).toBeInTheDocument();
     expect(screen.getByText('English')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch UI language' }));
+
+    expect(localStorage.getItem(UI_LANGUAGE_STORAGE_KEY)).toBe('ko');
+    expect(document.documentElement.lang).toBe('ko');
+    expect(screen.getByText('한국어')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '인터페이스 언어 전환' }));
+
+    expect(localStorage.getItem(UI_LANGUAGE_STORAGE_KEY)).toBe('zh');
+  });
+
+  it('detects Korean from storage and browser language', () => {
+    expect(resolveInitialUiLanguage({
+      storage: createStorage('ko'),
+      navigatorLike: { language: 'en-US', languages: ['en-US'] },
+    })).toBe('ko');
+
+    expect(resolveInitialUiLanguage({
+      storage: createStorage(null),
+      navigatorLike: { language: 'ko-KR', languages: ['ko-KR', 'en-US'] },
+    })).toBe('ko');
   });
 });

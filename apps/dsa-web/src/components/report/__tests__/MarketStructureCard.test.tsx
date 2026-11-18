@@ -2,6 +2,15 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { MarketStructureContext } from '../../../types/analysis';
 import { MarketStructureCard } from '../MarketStructureCard';
+import type { ReactElement } from 'react';
+import { UiLanguageProvider } from '../../../contexts/UiLanguageContext';
+import type { UiLanguage } from '../../../i18n/uiText';
+import { UI_LANGUAGE_STORAGE_KEY } from '../../../utils/uiLanguage';
+
+const renderInUiLanguage = (ui: ReactElement, language: UiLanguage) => {
+  window.localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, language);
+  return render(<UiLanguageProvider>{ui}</UiLanguageProvider>);
+};
 
 const context: MarketStructureContext = {
   schemaVersion: 'market-structure-v1',
@@ -63,7 +72,7 @@ const context: MarketStructureContext = {
 
 describe('MarketStructureCard', () => {
   it('renders market layer and stock layer in Chinese', () => {
-    render(<MarketStructureCard context={context} language="zh" />);
+    render(<MarketStructureCard context={context} />);
 
     expect(screen.getByRole('region', { name: '题材主线与个股位置' })).toBeInTheDocument();
     expect(screen.getByText('大盘题材层')).toBeVisible();
@@ -77,7 +86,7 @@ describe('MarketStructureCard', () => {
   });
 
   it('renders English labels', () => {
-    render(<MarketStructureCard context={context} language="en" />);
+    renderInUiLanguage(<MarketStructureCard context={context} />, 'en');
 
     expect(screen.getByRole('region', { name: 'Themes and Stock Position' })).toBeInTheDocument();
     expect(screen.getByText('Market Theme Layer')).toBeVisible();
@@ -91,7 +100,7 @@ describe('MarketStructureCard', () => {
   });
 
   it('renders Korean labels', () => {
-    render(<MarketStructureCard context={context} language="ko" />);
+    renderInUiLanguage(<MarketStructureCard context={context} />, 'ko');
 
     expect(screen.getByRole('region', { name: '테마 라인 및 종목 포지션' })).toBeInTheDocument();
     expect(screen.getByText('시장 테마 레이어')).toBeVisible();

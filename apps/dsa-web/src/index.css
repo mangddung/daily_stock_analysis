@@ -5,12 +5,52 @@
 /* =========================================
    1. THEME VARIABLES (Base/Classic)
    ========================================= */
+/* Hangul fallback: the Latin fonts below have no Hangul, so Korean used to fall back to the OS
+   font at full size and looked ~20% taller than Latin caps. This face only covers Hangul and
+   scales it down. size-adjust is the tuning knob. */
+@font-face {
+  font-family: "DSA Hangul";
+  src: local("Malgun Gothic"), local("MalgunGothic"), local("Apple SD Gothic Neo"),
+    local("AppleSDGothicNeo-Regular"), local("Noto Sans KR"), local("NotoSansKR-Regular"),
+    local("Noto Sans CJK KR");
+  font-weight: 100 500;
+  unicode-range: U+1100-11FF, U+3130-318F, U+A960-A97F, U+AC00-D7AF, U+D7B0-D7FF;
+  size-adjust: 92%;
+}
+@font-face {
+  font-family: "DSA Hangul";
+  src: local("Malgun Gothic Bold"), local("MalgunGothicBold"), local("Apple SD Gothic Neo Bold"),
+    local("AppleSDGothicNeo-Bold"), local("Noto Sans KR Bold"), local("NotoSansKR-Bold"),
+    local("Noto Sans CJK KR Bold");
+  font-weight: 600 900;
+  unicode-range: U+1100-11FF, U+3130-318F, U+A960-A97F, U+AC00-D7AF, U+D7B0-D7FF;
+  size-adjust: 92%;
+}
+
+/* Korean: wrap at spaces like English instead of between any two syllables (which stacked
+   short labels vertically in narrow flex items), and drop the wide caps-label tracking that
+   only suits Latin uppercase. */
+:lang(ko) {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+:lang(ko) .label-uppercase,
+:lang(ko) .backtest-table-head-cell,
+:lang(ko) [class*="tracking-[0."] {
+  letter-spacing: 0.02em;
+}
+
 :root {
+  /* Overrides Tailwind's theme --font-mono (used by .font-mono) to add the scaled Hangul face. */
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", "DSA Hangul", monospace;
+
   /* Typography */
   font-family:
     "Inter",
     "SF Pro Display",
     "Segoe UI",
+    "DSA Hangul",
     system-ui,
     -apple-system,
     sans-serif;
@@ -2653,7 +2693,7 @@ textarea {
 }
 .backtest-metric-row .value {
   font-size: 0.875rem;
-  font-family: monospace;
+  font-family: var(--font-mono);
   font-weight: 600;
   color: hsl(var(--foreground));
 }
@@ -2680,7 +2720,7 @@ textarea {
   border: 1px solid var(--backtest-border-dim);
   background: hsl(var(--elevated));
   font-size: 0.75rem;
-  font-family: monospace;
+  font-family: var(--font-mono);
 }
 .backtest-summary .label {
   color: var(--text-secondary-text);
@@ -2832,12 +2872,12 @@ textarea {
 }
 
 .backtest-table-code {
-  font-family: monospace;
+  font-family: var(--font-mono);
   color: hsl(var(--primary));
 }
 
 .backtest-table-return {
-  font-family: monospace;
+  font-family: var(--font-mono);
 }
 
 .backtest-table-row {

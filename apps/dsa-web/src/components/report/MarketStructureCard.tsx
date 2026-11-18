@@ -6,15 +6,13 @@ import type {
   MarketStructureThemePhase,
   MarketStructureStockRole,
   RankedThemeItem,
-  ReportLanguage,
 } from '../../types/analysis';
-import { normalizeReportLanguage } from '../../utils/reportLanguage';
+import { useUiLanguage } from '../../contexts/UiLanguageContext';
 import { Badge, Card } from '../common';
 import { DashboardPanelHeader } from '../dashboard';
 
 interface MarketStructureCardProps {
   context?: MarketStructureContext | null;
-  language?: ReportLanguage;
 }
 
 type BadgeVariant = NonNullable<React.ComponentProps<typeof Badge>['variant']>;
@@ -170,17 +168,13 @@ const valueList = (items?: string[], limit = 4): string[] => {
   return items.filter(Boolean).slice(0, limit);
 };
 
-export const MarketStructureCard: React.FC<MarketStructureCardProps> = ({ context, language }) => {
+export const MarketStructureCard: React.FC<MarketStructureCardProps> = ({ context }) => {
+  const { language } = useUiLanguage();
   if (!context || context.schemaVersion !== 'market-structure-v1' || context.status === 'not_supported') {
     return null;
   }
 
-  const reportLanguage = normalizeReportLanguage(language);
-  const text = reportLanguage === 'en'
-    ? TEXT.en
-    : reportLanguage === 'ko'
-      ? TEXT.ko
-      : TEXT.zh;
+  const text = TEXT[language];
   const marketTheme = context.marketThemeContext;
   const stockPosition = context.stockMarketPosition;
   if (!marketTheme || !stockPosition) {
@@ -198,7 +192,7 @@ export const MarketStructureCard: React.FC<MarketStructureCardProps> = ({ contex
   const riskTags = valueList(
     stockPosition.riskTags?.map(
       (tag) =>
-        (RISK_TAG_TEXT[reportLanguage] as Record<string, string>)[tag.code]
+        (RISK_TAG_TEXT[language] as Record<string, string>)[tag.code]
         || tag.message
         || tag.code,
     ),

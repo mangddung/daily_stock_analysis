@@ -2,6 +2,15 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { historyApi } from '../../../api/history';
 import { ReportNews } from '../ReportNews';
+import type { ReactElement } from 'react';
+import { UiLanguageProvider } from '../../../contexts/UiLanguageContext';
+import type { UiLanguage } from '../../../i18n/uiText';
+import { UI_LANGUAGE_STORAGE_KEY } from '../../../utils/uiLanguage';
+
+const renderInUiLanguage = (ui: ReactElement, language: UiLanguage) => {
+  window.localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, language);
+  return render(<UiLanguageProvider>{ui}</UiLanguageProvider>);
+};
 
 vi.mock('../../../api/history', () => ({
   historyApi: {
@@ -60,7 +69,7 @@ describe('ReportNews', () => {
       items: [],
     });
 
-    render(<ReportNews recordId={1} language="en" />);
+    renderInUiLanguage(<ReportNews recordId={1} />, 'en');
 
     expect(await screen.findByText('No related news')).toBeInTheDocument();
     expect(screen.getByText('Refresh later to check for the latest updates.')).toBeInTheDocument();

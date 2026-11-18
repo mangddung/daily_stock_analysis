@@ -53,6 +53,20 @@ describe('Skill Outcome auto-weight settings help', () => {
     expect(visibleCopy).not.toContain('Depends on backtest');
   });
 
+  it('describes the attributable Outcome threshold in Korean', () => {
+    const help = getSettingsHelpContent(
+      'settings.agent.AGENT_SKILL_AUTOWEIGHT',
+      undefined,
+      'ko',
+    );
+    const visibleCopy = flattenHelp(help);
+
+    expect(help?.title).toBe('전략 자동 가중치');
+    expect(visibleCopy).toContain('Outcome');
+    expect(visibleCopy).toContain('30');
+    expect(visibleCopy).toContain('1.0');
+  });
+
   it('does not present Backtest as the Skill auto-weight data source', () => {
     const zhHelp = flattenHelp(getSettingsHelpContent(
       'settings.backtest.BACKTEST_ENABLED',

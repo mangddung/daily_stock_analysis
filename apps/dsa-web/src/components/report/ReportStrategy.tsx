@@ -1,12 +1,12 @@
 import type React from 'react';
-import type { ReportLanguage, ReportStrategy as ReportStrategyType } from '../../types/analysis';
+import type { ReportStrategy as ReportStrategyType } from '../../types/analysis';
 import { Card } from '../common';
 import { DashboardPanelHeader } from '../dashboard';
-import { getReportText, normalizeReportLanguage } from '../../utils/reportLanguage';
+import { getReportText } from '../../utils/reportLanguage';
+import { useUiLanguage } from '../../contexts/UiLanguageContext';
 
 interface ReportStrategyProps {
   strategy?: ReportStrategyType;
-  language?: ReportLanguage;
 }
 
 interface StrategyItemProps {

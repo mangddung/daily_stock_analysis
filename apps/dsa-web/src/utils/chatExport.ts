@@ -1,5 +1,6 @@
 import type { Message } from '../stores/agentChatStore';
 import type { UiLanguage } from '../i18n/uiText';
+import { getUiLocale } from './uiLanguage';
 import { chatText } from '../locales/chat';
 
 /**
@@ -7,7 +8,7 @@ import { chatText } from '../locales/chat';
  */
 export function formatSessionAsMarkdown(messages: Message[], language: UiLanguage = 'zh'): string {
   const now = new Date();
-  const timeStr = now.toLocaleString(language === 'en' ? 'en-US' : 'zh-CN', {
+  const timeStr = now.toLocaleString(getUiLocale(language), {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

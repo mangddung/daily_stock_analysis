@@ -2,21 +2,18 @@ import type React from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, Check, ChevronDown, Copy, Workflow } from 'lucide-react';
 import { historyApi } from '../../api/history';
-import { formatUiText, UI_TEXT } from '../../i18n/uiText';
 import type {
-  ReportLanguage,
   RunDiagnosticComponent,
   RunDiagnosticComponentStatus,
   RunDiagnosticStatus,
   RunDiagnosticSummary,
 } from '../../types/analysis';
-import { normalizeReportLanguage } from '../../utils/reportLanguage';
+import { useUiLanguage } from '../../contexts/UiLanguageContext';
 import { Badge, Button, Card, StatusDot } from '../common';
 
 interface ReportDiagnosticsProps {
   recordId?: number;
   summary?: RunDiagnosticSummary;
-  language?: ReportLanguage;
   onOpenRunFlow?: (recordId: number) => void;
 }
 
@@ -165,12 +162,10 @@ const getOrderedComponents = (
 export const ReportDiagnostics: React.FC<ReportDiagnosticsProps> = ({
   recordId,
   summary,
-  language = 'zh',
   onOpenRunFlow,
 }) => {
-  const reportLanguage = normalizeReportLanguage(language);
-  const text = TEXT[reportLanguage];
-  const runFlowText = UI_TEXT[reportLanguage === 'ko' ? 'en' : reportLanguage];
+  const { language, t } = useUiLanguage();
+  const text = TEXT[language];
   const [fetchState, setFetchState] = useState<{
     recordId?: number;
     summary: RunDiagnosticSummary | null;
@@ -365,10 +360,10 @@ export const ReportDiagnostics: React.FC<ReportDiagnosticsProps> = ({
                   variant="ghost"
                   size="xsm"
                   onClick={() => onOpenRunFlow(recordId)}
-                  aria-label={formatUiText(runFlowText['runFlow.openHistoryAria'], { recordId })}
+                  aria-label={t('runFlow.openHistoryAria', { recordId })}
                 >
                   <Workflow className="h-3.5 w-3.5" aria-hidden="true" />
-                  {runFlowText['runFlow.open']}
+                  {t('runFlow.open')}
                 </Button>
               ) : null}
               <Button

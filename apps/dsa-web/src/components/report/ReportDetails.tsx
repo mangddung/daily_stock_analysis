@@ -1,14 +1,14 @@
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
-import type { ReportDetails as ReportDetailsType, ReportLanguage } from '../../types/analysis';
+import type { ReportDetails as ReportDetailsType } from '../../types/analysis';
 import { Card } from '../common';
 import { DashboardPanelHeader } from '../dashboard';
-import { getReportText, normalizeReportLanguage } from '../../utils/reportLanguage';
+import { getReportText } from '../../utils/reportLanguage';
+import { useUiLanguage } from '../../contexts/UiLanguageContext';
 
 interface ReportDetailsProps {
   details?: ReportDetailsType;
   recordId?: number;  // 分析历史记录主键 ID
-  language?: ReportLanguage;
 }
 
 /**
@@ -17,13 +17,12 @@ interface ReportDetailsProps {
 export const ReportDetails: React.FC<ReportDetailsProps> = ({
   details,
   recordId,
-  language = 'zh',
 }) => {
   type JsonPanel = 'raw' | 'snapshot';
   type CopiedPanelState = Record<JsonPanel, boolean>;
 
-  const reportLanguage = normalizeReportLanguage(language);
-  const text = getReportText(reportLanguage);
+  const { language } = useUiLanguage();
+  const text = getReportText(language);
   const [showRaw, setShowRaw] = useState(false);
   const [showSnapshot, setShowSnapshot] = useState(false);
   const [copiedPanels, setCopiedPanels] = useState<CopiedPanelState>({

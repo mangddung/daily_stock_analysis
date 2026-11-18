@@ -5,13 +5,12 @@ import type {
   AnalysisContextPackOverview,
   ReportLanguage,
 } from '../../types/analysis';
-import { normalizeReportLanguage } from '../../utils/reportLanguage';
+import { useUiLanguage } from '../../contexts/UiLanguageContext';
 import { Badge, Card, StatusDot } from '../common';
 import { DashboardPanelHeader } from '../dashboard';
 
 interface AnalysisContextSummaryProps {
   overview?: AnalysisContextPackOverview | null;
-  language?: ReportLanguage;
 }
 
 type BadgeVariant = NonNullable<React.ComponentProps<typeof Badge>['variant']>;
@@ -306,10 +305,9 @@ const formatMissingReason = (
 
 export const AnalysisContextSummary: React.FC<AnalysisContextSummaryProps> = ({
   overview,
-  language = 'zh',
 }) => {
-  const reportLanguage = normalizeReportLanguage(language);
-  const text = TEXT[reportLanguage];
+  const { language } = useUiLanguage();
+  const text = TEXT[language];
 
   if (!overview || !overview.blocks?.length) {
     return null;
@@ -331,7 +329,7 @@ export const AnalysisContextSummary: React.FC<AnalysisContextSummaryProps> = ({
   const qualityLevel = quality?.level || undefined;
   const qualityStyle = qualityLevel ? QUALITY_STYLE[qualityLevel] : undefined;
   const qualityLabel = qualityLevel ? text.qualityLevel[qualityLevel] : undefined;
-  const limitations = quality?.limitations?.map((item) => formatLimitation(item, reportLanguage, text)) || [];
+  const limitations = quality?.limitations?.map((item) => formatLimitation(item, language, text)) || [];
 
   return (
     <Card variant="bordered" padding="none" className="home-panel-card">
@@ -444,11 +442,11 @@ export const AnalysisContextSummary: React.FC<AnalysisContextSummaryProps> = ({
                 ? block.missingReasons
                   ?.map((reason) => formatMissingReason(
                     reason,
-                    reportLanguage,
+                    language,
                     block.status,
                   ))
                   .join('; ')
-                : STATUS_FALLBACK_GUIDANCE[reportLanguage][block.status];
+                : STATUS_FALLBACK_GUIDANCE[language][block.status];
               return (
                 <div key={block.key} className="home-subpanel p-3">
                   <div className="flex items-start justify-between gap-3">

@@ -28,7 +28,7 @@ export const UiLanguageProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   useEffect(() => {
     setActiveUiLanguage(language);
     if (typeof document !== 'undefined') {
-      document.documentElement.lang = language === 'en' ? 'en' : 'zh-CN';
+      document.documentElement.lang = language === 'zh' ? 'zh-CN' : language;
     }
   }, [language]);
 

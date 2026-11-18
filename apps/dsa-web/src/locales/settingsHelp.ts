@@ -1,4 +1,5 @@
 import type { SystemConfigDocLink } from '../types/systemConfig';
+import { settingsHelpKoKR } from './settingsHelpKo';
 
 export interface SettingsHelpContent {
   title: string;
@@ -12,7 +13,7 @@ export interface SettingsHelpContent {
   docs?: SystemConfigDocLink[];
 }
 
-type SettingsHelpMap = Record<string, SettingsHelpContent>;
+export type SettingsHelpMap = Record<string, SettingsHelpContent>;
 
 const settingsHelpZhCN: SettingsHelpMap = {
   'settings.base.STOCK_LIST': {
@@ -2530,6 +2531,9 @@ function getPreferredHelpMap(locale?: string | null): SettingsHelpMap {
   if (locale?.toLowerCase().startsWith('en')) {
     return settingsHelpEnUS;
   }
+  if (locale?.toLowerCase().startsWith('ko')) {
+    return settingsHelpKoKR;
+  }
   return settingsHelpZhCN;
 }
 
@@ -2542,14 +2546,17 @@ export function getSettingsHelpContent(
     return null;
   }
 
-  const localized = getPreferredHelpMap(locale)[helpKey] ?? settingsHelpZhCN[helpKey];
+  const isKorean = Boolean(locale?.toLowerCase().startsWith('ko'));
+  const localized = getPreferredHelpMap(locale)[helpKey]
+    ?? (isKorean ? settingsHelpEnUS[helpKey] : undefined)
+    ?? settingsHelpZhCN[helpKey];
   if (localized) {
     return localized;
   }
 
   if (fallbackDescription) {
     return {
-      title: locale?.toLowerCase().startsWith('en') ? 'Configuration help' : '配置说明',
+      title: locale?.toLowerCase().startsWith('en') ? 'Configuration help' : isKorean ? '설정 도움말' : '配置说明',
       summary: fallbackDescription,
     };
   }

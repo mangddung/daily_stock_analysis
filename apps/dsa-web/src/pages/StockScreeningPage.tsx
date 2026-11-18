@@ -42,6 +42,7 @@ import {
 import { getParsedApiError, toApiErrorMessage, type ParsedApiError } from '../api/error';
 import { useUiLanguage } from '../contexts/UiLanguageContext';
 import type { UiLanguage } from '../i18n/uiText';
+import { getUiLocale } from '../utils/uiLanguage';
 import { SCREENING_TEXT, screeningText, type ScreeningTextKey } from '../locales/screening';
 import { AppPage, Button, InlineAlert, Select } from '../components/common';
 
@@ -83,7 +84,7 @@ const formatRunCreatedAt = (language: UiLanguage, value: string | null | undefin
   if (Number.isNaN(parsed.getTime())) {
     return value;
   }
-  return parsed.toLocaleString(language === 'en' ? 'en-US' : 'zh-CN', {
+  return parsed.toLocaleString(getUiLocale(language), {
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
@@ -182,10 +183,10 @@ const formatAmount = (language: UiLanguage, value: unknown) => {
     return amount.toFixed(2);
   }
   if (Math.abs(amount) >= 100_000_000) {
-    return `${(amount / 100_000_000).toFixed(2)} 亿`;
+    return `${(amount / 100_000_000).toFixed(2)} ${language === 'ko' ? '억' : '亿'}`;
   }
   if (Math.abs(amount) >= 10_000) {
-    return `${(amount / 10_000).toFixed(2)} 万`;
+    return `${(amount / 10_000).toFixed(2)} ${language === 'ko' ? '만' : '万'}`;
   }
   return amount.toFixed(2);
 };
@@ -494,8 +495,8 @@ const formatHotspotEmptyMessage = (language: UiLanguage, result: ScreeningHotspo
   const message = String(result.message || '').trim();
   const sourceErrors = result.sourceErrors || [];
   if (message && sourceErrors.includes(SCREENING_HOTSPOT_UNAVAILABLE_CODE)) {
-    return language === 'en' && message === '热点源连接中断，暂无可用缓存。'
-      ? SCREENING_TEXT.en.hotspotOffline : message;
+    return language !== 'zh' && message === '热点源连接中断，暂无可用缓存。'
+      ? SCREENING_TEXT[language].hotspotOffline : message;
   }
   if (message === SCREENING_HOTSPOT_NO_CACHE_HINT) {
     return SCREENING_TEXT[language].noHotspotCache;
@@ -560,7 +561,7 @@ const getRouteTimeLabel = (language: UiLanguage, item: ScreeningHotspotDetail['r
   }
   const parsed = new Date(rawTime);
   if (!Number.isNaN(parsed.getTime())) {
-    return parsed.toLocaleString(language === 'en' ? 'en-US' : 'zh-CN', {
+    return parsed.toLocaleString(getUiLocale(language), {
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
@@ -601,11 +602,11 @@ const formatHotspotRouteDescription = (language: UiLanguage, value: string) => {
       }
       const leaders = part.match(/^leaders?\s+(.+)$/i);
       if (leaders) {
-        return screeningText(language, 'leadersValue', { leaders: leaders[1].split(/\s*,\s*/).filter(Boolean).join(language === 'en' ? ', ' : '、') });
+        return screeningText(language, 'leadersValue', { leaders: leaders[1].split(/\s*,\s*/).filter(Boolean).join(language === 'zh' ? '、' : ', ') });
       }
       return part;
     });
-    return language === 'en' ? `${localized.join(', ')}.` : `${localized.join('，')}。`;
+    return language === 'zh' ? `${localized.join('，')}。` : `${localized.join(', ')}.`;
   }
   if (/Dsa[A-Z]|Provider\b|stock_board_|concept_constituents|leader_stocks|last_good_cache/i.test(text)) {
     return SCREENING_TEXT[language].hotspotUpdated;
@@ -684,11 +685,11 @@ const getHotspotSummaryText = (language: UiLanguage, detail: ScreeningHotspotDet
     parts.push(screeningText(language, 'stageValue', { stage: getHotspotStageLabel(language, stage) }));
   }
   if (leaders.length > 0) {
-    parts.push(screeningText(language, 'leadersValue', { leaders: leaders.join(language === 'en' ? ', ' : '、') }));
+    parts.push(screeningText(language, 'leadersValue', { leaders: leaders.join(language === 'zh' ? '、' : ', ') }));
   }
   if (parts.length > 0) {
     const topic = detail.name || detail.canonicalTopic || detail.topic;
-    return language === 'en' ? `${topic}: ${parts.join(', ')}.` : `${topic}：${parts.join('，')}。`;
+    return language === 'zh' ? `${topic}：${parts.join('，')}。` : `${topic}: ${parts.join(', ')}.`;
   }
   const summary = String(detail.summary || '').trim();
   if (summary && !/\b(?:heat|stage|leaders?|quality status|available|partial|stale|failed)\b|Dsa[A-Z]|Provider\b|stock_board_/i.test(summary)) {
@@ -769,7 +770,7 @@ const formatHotspotMetric = (language: UiLanguage, value: unknown, digits = 1) =
 const getHotspotLeadersText = (language: UiLanguage, item: ScreeningHotspot) => {
   const leaders = (item.leaders || []).map((value) => String(value).trim()).filter(Boolean);
   if (leaders.length > 0) {
-    return leaders.slice(0, 2).join(language === 'en' ? ', ' : '、');
+    return leaders.slice(0, 2).join(language === 'zh' ? '、' : ', ');
   }
   return SCREENING_TEXT[language].watching;
 };
@@ -794,7 +795,7 @@ const formatHotspotUpdatedAt = (language: UiLanguage, value: string | null) => {
   if (Number.isNaN(parsed.getTime())) {
     return value;
   }
-  return parsed.toLocaleString(language === 'en' ? 'en-US' : 'zh-CN', {
+  return parsed.toLocaleString(getUiLocale(language), {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -895,11 +896,24 @@ const formatScreenTaskMessage = (language: UiLanguage, message: string | null | 
     '正在执行最终评分与风险校验': 'Applying final scores and risk checks',
     '选股核心流程完成': 'Core screening completed',
   };
+  const progressKo: Record<string, string> = {
+    '选股任务已提交': '종목 발굴 작업이 제출되었습니다',
+    '任务执行中': '종목 발굴 작업 실행 중',
+    '正在执行选股，外部数据源较慢时会持续后台运行': '외부 데이터 소스 응답이 느리면 종목 발굴이 백그라운드에서 계속 실행됩니다',
+    '正在补充入选股票的新闻与事件': '선정 종목의 뉴스와 이벤트를 불러오는 중',
+    '任务执行完成': '작업 완료',
+    '正在读取全市场快照': '전체 시장 스냅샷을 불러오는 중',
+    '正在补充候选行情与基本面': '후보 종목의 시세와 펀더멘털을 보강하는 중',
+    '正在执行 LLM 候选重排': 'LLM으로 후보를 재정렬하는 중',
+    '正在执行最终评分与风险校验': '최종 점수 및 리스크 검증 적용 중',
+    '选股核心流程完成': '종목 발굴 핵심 단계 완료',
+  };
+  if (language === 'ko' && message && Object.hasOwn(progressKo, message)) return progressKo[message];
   if (message && Object.hasOwn(progress, message)) return progress[message];
   const filtered = message?.match(/^快照筛选完成，保留 (\d+) 条候选$/);
-  if (filtered) return `Snapshot filtering completed; ${filtered[1]} candidates retained`;
+  if (filtered) return language === 'ko' ? `스냅샷 필터링 완료, 후보 ${filtered[1]}개 유지` : `Snapshot filtering completed; ${filtered[1]} candidates retained`;
   const preparing = message?.match(/^选股已完成，正在整理 (\d+) 条候选$/);
-  if (preparing) return `Screening complete. Preparing ${preparing[1]} candidates.`;
+  if (preparing) return language === 'ko' ? `종목 발굴 완료. 후보 ${preparing[1]}개를 정리하는 중입니다.` : `Screening complete. Preparing ${preparing[1]} candidates.`;
   if (message) return message;
   return screeningText(language, status === 'pending' ? 'taskPending' : status === 'processing' ? 'taskProcessing' : 'completed');
 };
@@ -1601,7 +1615,7 @@ const StockScreeningPage: React.FC = () => {
                 onClick={toggleHotspotsExpanded}
               >
                 <Bookmark className="h-4 w-4" />
-                {hotspotsExpanded ? copy.collapseHotspots : screeningText(language, 'expandHotspots', { count: hotspots.length ? (language === 'en' ? ` (${hotspots.length})` : `（${hotspots.length}）`) : '' })}
+                {hotspotsExpanded ? copy.collapseHotspots : screeningText(language, 'expandHotspots', { count: hotspots.length ? (language === 'zh' ? `（${hotspots.length}）` : ` (${hotspots.length})`) : '' })}
                 <ChevronDown className={`h-4 w-4 transition-transform ${hotspotsExpanded ? 'rotate-180' : ''}`} />
               </Button>
               {hotspotsExpanded ? (
@@ -1753,7 +1767,7 @@ const StockScreeningPage: React.FC = () => {
                 <summary className="cursor-pointer font-semibold">{copy.degradedDetails}</summary>
                 <div className="mt-2 space-y-1 leading-5">
                   {(hotspotDetail.missingFields || []).length > 0 ? (
-                    <p>{copy.missingLabel}{getHotspotMissingFieldLabels(language, hotspotDetail.missingFields).join(language === 'en' ? ', ' : '、')}</p>
+                    <p>{copy.missingLabel}{getHotspotMissingFieldLabels(language, hotspotDetail.missingFields).join(language === 'zh' ? '、' : ', ')}</p>
                   ) : null}
                   {getHotspotDiagnosticMessages(language, hotspotDetail.sourceErrors).map((message, index) => (
                     <p key={`${message}-${index}`}>{message}</p>
@@ -1947,7 +1961,7 @@ const StockScreeningPage: React.FC = () => {
             <summary className="w-fit cursor-pointer font-medium text-secondary-text">{copy.runDetails}</summary>
             <div className="mt-2 grid gap-1">
               <span>{copy.taskLabel}{activeTaskId ? activeTaskId.slice(0, 12) : '-'}</span>
-              <span>{language === 'en' ? 'Run ID: ' : 'Run ID：'}{screenMeta?.runId || '-'}</span>
+              <span>{language === 'zh' ? 'Run ID：' : 'Run ID: '}{screenMeta?.runId || '-'}</span>
               <span>
                 {copy.snapshot} {screenMeta?.snapshotCount ?? '-'} {copy.filteredLabel} {screenMeta?.afterFilterCount ?? '-'} {copy.candidatesLabel} {screenMeta?.candidateCount ?? candidates.length}
               </span>
@@ -2105,7 +2119,7 @@ const StockScreeningPage: React.FC = () => {
                                   <p className="text-xs font-semibold text-secondary-text">{copy.riskFlags}</p>
                                   <p className="mt-1 text-sm text-foreground">
                                     {[...(item.riskFlags || []), ...(item.llmRisks || [])].length
-                                      ? [...(item.riskFlags || []), ...(item.llmRisks || [])].join(language === 'en' ? ', ' : '，')
+                                      ? [...(item.riskFlags || []), ...(item.llmRisks || [])].join(language === 'zh' ? '，' : ', ')
                                       : copy.none}
                                   </p>
                                 </div>
@@ -2139,13 +2153,13 @@ const StockScreeningPage: React.FC = () => {
                                 {item.llmWatchItems?.length ? (
                                   <div>
                                     <p className="text-xs font-semibold text-secondary-text">{copy.watchItems}</p>
-                                    <p className="mt-1 text-sm text-foreground">{item.llmWatchItems.join(language === 'en' ? ', ' : '，')}</p>
+                                    <p className="mt-1 text-sm text-foreground">{item.llmWatchItems.join(language === 'zh' ? '，' : ', ')}</p>
                                   </div>
                                 ) : null}
                                 {item.llmCatalysts?.length ? (
                                   <div>
                                     <p className="text-xs font-semibold text-secondary-text">{copy.catalysts}</p>
-                                    <p className="mt-1 text-sm text-foreground">{item.llmCatalysts.join(language === 'en' ? ', ' : '，')}</p>
+                                    <p className="mt-1 text-sm text-foreground">{item.llmCatalysts.join(language === 'zh' ? '，' : ', ')}</p>
                                   </div>
                                 ) : null}
                                 <div>
@@ -2179,7 +2193,7 @@ const StockScreeningPage: React.FC = () => {
                                 {dsaWarnings.length > 0 ? (
                                   <div>
                                     <p className="text-xs font-semibold text-secondary-text">{copy.enrichmentNotices}</p>
-                                    <p className="mt-1 text-sm text-secondary-text">{dsaWarnings.join(language === 'en' ? ', ' : '，')}</p>
+                                    <p className="mt-1 text-sm text-secondary-text">{dsaWarnings.join(language === 'zh' ? '，' : ', ')}</p>
                                   </div>
                                 ) : null}
                               </div>

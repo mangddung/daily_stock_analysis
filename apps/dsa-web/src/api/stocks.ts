@@ -1,4 +1,5 @@
 import apiClient from './index';
+import { errorText } from '../locales/errors';
 
 export type ExtractItem = {
   code?: string | null;
@@ -49,6 +50,6 @@ export const stocksApi = {
       const data = response.data as { codes?: string[]; items?: ExtractItem[] };
       return { codes: data.codes ?? [], items: data.items };
     }
-    throw new Error('请提供文件或粘贴文本');
+    throw new Error(errorText('importSourceRequired'));
   },
 };

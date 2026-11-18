@@ -4,6 +4,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { historyApi } from '../../../api/history';
 import type { RunDiagnosticSummary } from '../../../types/analysis';
 import { ReportDiagnostics } from '../ReportDiagnostics';
+import type { ReactElement } from 'react';
+import { UiLanguageProvider } from '../../../contexts/UiLanguageContext';
+import type { UiLanguage } from '../../../i18n/uiText';
+import { UI_LANGUAGE_STORAGE_KEY } from '../../../utils/uiLanguage';
+
+const renderInUiLanguage = (ui: ReactElement, language: UiLanguage) => {
+  window.localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, language);
+  return render(<UiLanguageProvider>{ui}</UiLanguageProvider>);
+};
 
 vi.mock('../../../api/history', () => ({
   historyApi: {
@@ -80,7 +89,7 @@ describe('ReportDiagnostics', () => {
   });
 
   it('uses the provided summary without fetching history diagnostics', () => {
-    render(<ReportDiagnostics summary={diagnosticSummary} language="en" />);
+    renderInUiLanguage(<ReportDiagnostics summary={diagnosticSummary} />, 'en');
 
     expect(historyApi.getDiagnostics).not.toHaveBeenCalled();
     expect(screen.getByText('Run Status')).toBeInTheDocument();

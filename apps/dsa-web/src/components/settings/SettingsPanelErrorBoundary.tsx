@@ -135,6 +135,14 @@ export const SettingsPanelErrorBoundary = (props: SettingsPanelErrorBoundaryProp
         errorSummaryPrefix: 'Error summary: ',
         unknownError: 'Unknown frontend runtime error',
       }
+    : language === 'ko'
+    ? {
+        loadFailedSuffix: ' 로드 실패',
+        runtimeErrorMessage: '이 설정 영역에서 프론트엔드 런타임 오류가 발생했습니다. 다른 설정은 계속 사용할 수 있습니다.',
+        defaultDiagnosticHint: '문제 진단을 위해 release 버전, 실행 환경, 발생 경로를 함께 알려 주십시오.',
+        errorSummaryPrefix: '오류 요약: ',
+        unknownError: '알 수 없는 프론트엔드 런타임 오류',
+      }
     : {
         loadFailedSuffix: '加载失败',
         runtimeErrorMessage: '该设置区域发生前端运行时异常，页面其他设置仍可继续使用。',

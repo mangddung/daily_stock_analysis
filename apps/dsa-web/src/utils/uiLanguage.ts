@@ -5,7 +5,7 @@ export const UI_LANGUAGE_STORAGE_KEY = 'dsa.uiLanguage';
 export const UI_LANGUAGE_HEADER = 'X-DSA-UI-Language';
 
 export function normalizeUiLanguage(value?: string | null): UiLanguage | null {
-  if (value === 'zh' || value === 'en') {
+  if (value === 'zh' || value === 'en' || value === 'ko') {
     return value;
   }
   return null;
@@ -61,6 +61,9 @@ function getBrowserUiLanguage(navigatorLike?: Pick<Navigator, 'language' | 'lang
     if (normalized.startsWith('en')) {
       return 'en';
     }
+    if (normalized.startsWith('ko')) {
+      return 'ko';
+    }
   }
 
   return 'zh';
@@ -101,4 +104,11 @@ export function setActiveUiLanguage(language: UiLanguage): void {
 
 export function getActiveUiLanguage(): UiLanguage {
   return activeUiLanguage ?? getStoredUiLanguage(getUiLanguageStorage()) ?? 'zh';
+}
+
+const UI_LOCALES: Record<UiLanguage, string> = { zh: 'zh-CN', en: 'en-US', ko: 'ko-KR' };
+
+/** BCP 47 locale for Intl/toLocale* date and number formatting in the given UI language. */
+export function getUiLocale(language: UiLanguage): string {
+  return UI_LOCALES[language];
 }

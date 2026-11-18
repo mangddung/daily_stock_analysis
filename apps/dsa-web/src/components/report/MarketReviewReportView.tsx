@@ -2,7 +2,6 @@ import type React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BarChart3, Clipboard, FileText, Gauge, Layers, ShieldAlert, TrendingUp, WalletCards, Workflow } from 'lucide-react';
 import { historyApi } from '../../api/history';
-import { formatUiText, UI_TEXT } from '../../i18n/uiText';
 import type {
   AnalysisReport,
   MarketReviewPayload,
@@ -10,7 +9,10 @@ import type {
   ReportLanguage,
 } from '../../types/analysis';
 import { markdownToPlainText } from '../../utils/markdown';
-import { getReportText, normalizeReportLanguage } from '../../utils/reportLanguage';
+import { getReportText } from '../../utils/reportLanguage';
+import { getUiLocale } from '../../utils/uiLanguage';
+import { formatMarketReviewRegionLabel } from '../../utils/marketReviewRegion';
+import { useUiLanguage } from '../../contexts/UiLanguageContext';
 import { Card } from '../common';
 import { Tooltip } from '../common/Tooltip';
 import { ReportMarkdownBody } from './ReportMarkdownBody';
@@ -21,7 +23,6 @@ interface MarketReviewReportViewProps {
   recordId?: number;
   content?: string;
   payload?: MarketReviewPayload | null;
-  reportLanguage?: ReportLanguage;
   className?: string;
   onOpenRunFlow?: (recordId: number) => void;
 }
@@ -373,14 +374,12 @@ export const MarketReviewReportView: React.FC<MarketReviewReportViewProps> = ({
   recordId,
   content: providedContent,
   payload: providedPayload,
-  reportLanguage = 'zh',
   className = '',
   onOpenRunFlow,
 }) => {
-  const normalizedReportLanguage = normalizeReportLanguage(reportLanguage);
-  const text = getReportText(normalizedReportLanguage);
-  const runFlowText = UI_TEXT[normalizedReportLanguage === 'ko' ? 'en' : normalizedReportLanguage];
-  const marketReviewText = MARKET_REVIEW_TEXT[normalizedReportLanguage];
+  const { t, language } = useUiLanguage();
+  const text = getReportText(language);
+  const marketReviewText = MARKET_REVIEW_TEXT[language];
   const [loadedMarkdown, setLoadedMarkdown] = useState<LoadedMarkdown | null>(null);
   const [loadError, setLoadError] = useState<LoadError | null>(null);
   const [copiedType, setCopiedType] = useState<CopyType | null>(null);
@@ -401,9 +400,9 @@ export const MarketReviewReportView: React.FC<MarketReviewReportViewProps> = ({
   const sections = useMemo(
     () => {
       const payloadSections = getPayloadSections(marketReviewPayload);
-      return payloadSections.length > 0 ? payloadSections : splitMarketReviewSections(structuredContent, normalizedReportLanguage);
+      return payloadSections.length > 0 ? payloadSections : splitMarketReviewSections(structuredContent, language);
     },
-    [marketReviewPayload, structuredContent, normalizedReportLanguage],
+    [marketReviewPayload, structuredContent, language],
   );
   const structuredMarketData = useMemo(
     () => getStructuredMarketData(marketReviewPayload),
@@ -503,16 +502,15 @@ export const MarketReviewReportView: React.FC<MarketReviewReportViewProps> = ({
             <ShareImageButton
               recordId={recordId}
               reportTitle={displayTitle}
-              reportLanguage={reportLanguage}
             />
             {canOpenRunFlow ? (
-              <Tooltip content={runFlowText['runFlow.open']}>
+              <Tooltip content={t('runFlow.open')}>
                 <span className="inline-flex">
                   <button
                     type="button"
                     onClick={() => onOpenRunFlow(recordId)}
                     className="home-surface-button flex h-10 w-10 items-center justify-center rounded-lg text-secondary-text hover:text-foreground"
-                    aria-label={formatUiText(runFlowText['runFlow.openHistoryAria'], { recordId })}
+                    aria-label={t('runFlow.openHistoryAria', { recordId })}
                   >
                     <Workflow className="h-5 w-5" aria-hidden="true" />
                   </button>

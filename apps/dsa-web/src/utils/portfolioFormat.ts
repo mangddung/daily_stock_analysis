@@ -87,12 +87,12 @@ export function formatCorporateActionLabel(value: PortfolioCorporateActionType, 
 }
 
 export function formatBrokerLabel(value: string, displayName?: string, language: UiLanguage = 'zh'): string {
-  // Backend display names are Chinese; English UI prefers the built-in English name for known brokers.
-  const name = (language === 'en' ? PORTFOLIO_BROKER_NAMES.en[value] : undefined)
+  // Backend display names are Chinese; non-Chinese UIs prefer the built-in name for known brokers.
+  const name = (language !== 'zh' ? PORTFOLIO_BROKER_NAMES[language][value] : undefined)
     || displayName?.trim()
     || PORTFOLIO_BROKER_NAMES[language][value];
   if (!name) return value;
-  return language === 'en' ? `${value} (${name})` : `${value}（${name}）`;
+  return language === 'zh' ? `${value}（${name}）` : `${value} (${name})`;
 }
 
 export function buildFxRefreshFeedback(data: PortfolioFxRefreshResponse, language: UiLanguage = 'zh'): FxRefreshFeedback {

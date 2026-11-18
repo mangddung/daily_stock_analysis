@@ -1,6 +1,15 @@
+import type React from 'react';
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { UiLanguageProvider } from '../../../contexts/UiLanguageContext';
+import type { UiLanguage } from '../../../i18n/uiText';
+import { UI_LANGUAGE_STORAGE_KEY } from '../../../utils/uiLanguage';
 import { ReportOverview } from '../ReportOverview';
+
+const renderInUiLanguage = (ui: React.ReactElement, language: UiLanguage) => {
+  window.localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, language);
+  return render(<UiLanguageProvider>{ui}</UiLanguageProvider>);
+};
 
 const baseMeta = {
   queryId: 'q-1',
@@ -19,6 +28,22 @@ const baseSummary = {
 };
 
 describe('ReportOverview', () => {
+  afterEach(() => {
+    window.localStorage.removeItem(UI_LANGUAGE_STORAGE_KEY);
+  });
+
+  it('renders labels in the UI language while keeping report content in its own language', () => {
+    // A Chinese-generated report viewed by a Korean UI user.
+    renderInUiLanguage(<ReportOverview meta={baseMeta} summary={baseSummary} />, 'ko');
+
+    expect(screen.getByText('핵심 인사이트')).toBeInTheDocument();
+    expect(screen.getByText('대응 전략')).toBeInTheDocument();
+    expect(screen.getByText('시장 심리')).toBeInTheDocument();
+    expect(screen.queryByText('核心洞察')).not.toBeInTheDocument();
+    expect(screen.getByText('趋势维持强势')).toBeInTheDocument();
+    expect(screen.getByText('继续观察买点')).toBeInTheDocument();
+  });
+
   it('renders final market phase and partial-bar labels from report metadata', () => {
     render(
       <ReportOverview
@@ -50,11 +75,10 @@ describe('ReportOverview', () => {
   });
 
   it('renders English final market phase and partial-bar labels', () => {
-    render(
+    renderInUiLanguage(
       <ReportOverview
         meta={{
           ...baseMeta,
-          reportLanguage: 'en',
           marketPhaseSummary: {
             market: 'us',
             phase: 'postmarket',
@@ -73,6 +97,7 @@ describe('ReportOverview', () => {
         }}
         summary={baseSummary}
       />,
+      'en',
     );
 
     expect(screen.getByLabelText('Market phase: US · Post-market')).toBeInTheDocument();

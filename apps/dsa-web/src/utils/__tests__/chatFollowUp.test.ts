@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { buildChatFollowUpContext } from '../chatFollowUp';
+import { buildChatFollowUpContext, buildFollowUpPrompt } from '../chatFollowUp';
 import type { AnalysisReport } from '../../types/analysis';
 
 describe('chat follow-up context', () => {
@@ -128,4 +128,10 @@ describe('chat follow-up context', () => {
 
     expect(context).not.toHaveProperty('market_structure_context');
   });
+});
+
+test('builds the chat follow-up prompt in the UI language', () => {
+  expect(buildFollowUpPrompt('600519', '贵州茅台', 'zh')).toBe('请深入分析 贵州茅台(600519)');
+  expect(buildFollowUpPrompt('AAPL', null, 'en')).toBe('Analyze AAPL in depth');
+  expect(buildFollowUpPrompt('005930', '삼성전자', 'ko')).toBe('삼성전자(005930) 심층 분석해 주세요');
 });

@@ -174,6 +174,8 @@ describe('StockScreeningPage', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Stock Screening');
     expect(screen.getByRole('button', { name: 'Run screening' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Switch UI language' }));
+    expect(screen.getByRole('button', { name: '종목 발굴 활성화' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: '인터페이스 언어 전환' }));
     expect(screen.getByRole('button', { name: '开启选股' })).toBeEnabled();
     expect(getScreeningStatus).toHaveBeenCalledTimes(1);
     localStorage.removeItem('dsa.uiLanguage');

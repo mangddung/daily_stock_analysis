@@ -1,4 +1,6 @@
-export type UiLanguage = 'zh' | 'en';
+import { ko } from './uiTextKo';
+
+export type UiLanguage = 'zh' | 'en' | 'ko';
 
 const zh = {
   'common.cancel': '取消',
@@ -29,7 +31,9 @@ const zh = {
 
   'language.current': '中文',
   'language.english': 'English',
+  'language.korean': '한국어',
   'language.short.en': 'EN',
+  'language.short.ko': '한',
   'language.short.zh': '中',
   'language.toggle': '切换界面语言',
   'language.uiLanguage': '界面语言',
@@ -1033,7 +1037,9 @@ const en: Record<UiTextKey, string> = {
 
   'language.current': 'English',
   'language.english': 'English',
+  'language.korean': '한국어',
   'language.short.en': 'EN',
+  'language.short.ko': '한',
   'language.short.zh': '中',
   'language.toggle': 'Switch UI language',
   'language.uiLanguage': 'UI language',

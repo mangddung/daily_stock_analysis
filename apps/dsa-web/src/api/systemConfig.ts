@@ -1,6 +1,8 @@
 import apiClient from './index';
 import { createParsedApiError, getParsedApiError, type ParsedApiError } from './error';
 import { toCamelCase } from './utils';
+import { errorText } from '../locales/errors';
+import type { UiLanguage } from '../i18n/uiText';
 import type {
   AgentBackendStatusPreviewRequest,
   AgentBackendStatusResponse,
@@ -38,7 +40,7 @@ export class SystemConfigValidationError extends Error {
     this.name = 'SystemConfigValidationError';
     this.issues = issues;
     this.parsedError = parsedError ?? createParsedApiError({
-      title: '配置校验失败',
+      title: errorText('configValidationFailed'),
       message,
       rawMessage: message,
       status: 400,
@@ -56,7 +58,7 @@ export class SystemConfigConflictError extends Error {
     this.name = 'SystemConfigConflictError';
     this.currentConfigVersion = currentConfigVersion;
     this.parsedError = parsedError ?? createParsedApiError({
-      title: '配置版本冲突',
+      title: errorText('configVersionConflict'),
       message,
       rawMessage: message,
       status: 409,
@@ -199,7 +201,7 @@ export const systemConfigApi = {
     return toCamelCase<SystemConfigSchemaResponse>(response.data);
   },
 
-  async getSetupStatus(language?: 'zh' | 'en'): Promise<SetupStatusResponse> {
+  async getSetupStatus(language?: UiLanguage): Promise<SetupStatusResponse> {
     // zh is the backend default; only send the param when another language is requested.
     const response = language && language !== 'zh'
       ? await apiClient.get<Record<string, unknown>>('/api/v1/system/config/setup/status', { params: { language } })
@@ -321,7 +323,7 @@ export const systemConfigApi = {
         if (status === 400) {
           const validationError = toCamelCase<SystemConfigValidationErrorResponse>(payloadData ?? {});
           throw new SystemConfigValidationError(
-            parsed.message || validationError.message || '配置校验失败',
+            parsed.message || validationError.message || errorText('configValidationFailed'),
             validationError.issues || [],
             parsed,
           );
@@ -330,7 +332,7 @@ export const systemConfigApi = {
         if (status === 409) {
           const conflict = toCamelCase<SystemConfigConflictResponse>(payloadData ?? {});
           throw new SystemConfigConflictError(
-            parsed.message || conflict.message || '配置版本冲突',
+            parsed.message || conflict.message || errorText('configVersionConflict'),
             conflict.currentConfigVersion,
             parsed,
           );

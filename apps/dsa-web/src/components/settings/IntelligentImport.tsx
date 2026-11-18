@@ -25,12 +25,12 @@ type ItemWithChecked = ExtractItem & { id: string; checked: boolean };
 
 function getConfidenceMeta(confidence: 'high' | 'medium' | 'low', language: UiLanguage) {
   if (confidence === 'high') {
-    return { label: language === 'en' ? 'High' : '高', badge: 'success' as const };
+    return { label: { zh: '高', en: 'High', ko: '높음' }[language], badge: 'success' as const };
   }
   if (confidence === 'low') {
-    return { label: language === 'en' ? 'Low' : '低', badge: 'warning' as const };
+    return { label: { zh: '低', en: 'Low', ko: '낮음' }[language], badge: 'warning' as const };
   }
-  return { label: language === 'en' ? 'Medium' : '中', badge: 'default' as const };
+  return { label: { zh: '中', en: 'Medium', ko: '보통' }[language], badge: 'default' as const };
 }
 
 function normalizeConfidence(confidence?: string | null): 'high' | 'medium' | 'low' {

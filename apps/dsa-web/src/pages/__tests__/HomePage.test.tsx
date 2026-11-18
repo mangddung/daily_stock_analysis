@@ -2781,7 +2781,7 @@ describe('HomePage', () => {
     expect(vi.mocked(analysisApi.analyzeAsync).mock.calls[0]?.[0]).not.toHaveProperty('reportLanguage');
   });
 
-  it('uses the payload language for live market review controls', async () => {
+  it('labels live market review controls in the UI language, not the payload language', async () => {
     vi.mocked(historyApi.getList).mockResolvedValue({
       total: 0,
       page: 1,
@@ -2822,9 +2822,11 @@ describe('HomePage', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: '大盘复盘' }));
 
-    expect(await screen.findByRole('button', { name: 'Copy Markdown Source' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Copy Plain Text' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '复制 Markdown 源码' })).not.toBeInTheDocument();
+    // English payload, Chinese UI: chrome follows the UI, content stays English.
+    expect(await screen.findByRole('button', { name: '复制 Markdown 源码' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '复制纯文本' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Copy Markdown Source' })).not.toBeInTheDocument();
+    expect(screen.getByText('US market review body')).toBeInTheDocument();
   });
 
   it('scrolls the dashboard to market review feedback after toolbar clicks', async () => {

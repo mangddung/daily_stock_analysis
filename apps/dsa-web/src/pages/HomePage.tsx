@@ -512,8 +512,6 @@ const HomePage: React.FC = () => {
     }
   }, [analysisSkills, selectedStrategyId]);
 
-  const reportLanguage = normalizeReportLanguage(selectedReport?.meta.reportLanguage);
-  const liveMarketReviewLanguage = normalizeReportLanguage(marketReviewPayload?.language);
   const isMarketReviewHistoryReport = selectedReport?.meta.reportType === 'market_review';
   const isHistoryTrendUnavailable = !selectedReport || !selectedReport.meta.stockCode;
 
@@ -635,7 +633,7 @@ const HomePage: React.FC = () => {
     const requiredNeedsAction = setupStatus.checks
       .filter((check) => check.required && check.status === 'needs_action')
       .map((check) => check.title);
-    return requiredNeedsAction.slice(0, 3).join(uiLanguage === 'en' ? ', ' : '、');
+    return requiredNeedsAction.slice(0, 3).join(uiLanguage === 'zh' ? '、' : ', ');
   }, [setupStatus, uiLanguage]);
 
   const handleCompletedTaskDataRefreshStarted = useCallback((task: TaskInfo) => {
@@ -1750,7 +1748,6 @@ const HomePage: React.FC = () => {
               <MarketReviewReportView
                 content={marketReviewReport}
                 payload={marketReviewPayload}
-                reportLanguage={liveMarketReviewLanguage}
                 className="mb-3"
               />
             ) : null}
@@ -1890,7 +1887,6 @@ const HomePage: React.FC = () => {
           recordId={selectedReport.meta.id}
           stockName={selectedReport.meta.stockName || ''}
           stockCode={selectedReport.meta.stockCode}
-          reportLanguage={reportLanguage}
           onClose={closeMarkdownDrawer}
         />
       ) : null}
