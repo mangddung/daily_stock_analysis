@@ -36,6 +36,7 @@ from src.agent.provider_trace import (
     trace_model_matches,
 )
 from src.llm.errors import call_litellm_with_param_recovery
+from src.services.run_diagnostics import note_rate_limit_outcome
 from src.llm.backend_registry import (
     AUTO_AGENT_BACKEND_ID,
     GENERATION_ONLY_BACKEND_IDS,
@@ -647,7 +648,7 @@ class LLMToolAdapter:
                     )
                     break
             try:
-                return self._call_litellm_model(
+                response = self._call_litellm_model(
                     messages,
                     tools or [],
                     model,
@@ -655,9 +656,14 @@ class LLMToolAdapter:
                     max_tokens=max_tokens,
                     timeout=remaining_timeout,
                 )
+                note_rate_limit_outcome("llm", model, success=True)
+                return response
             except Exception as e:
                 if isinstance(e, _resolve_litellm_exception("RateLimitError")):
                     logger.warning("Agent LLM rate-limited on %s: %s", model, e)
+                    note_rate_limit_outcome(
+                        "llm", model, success=False, error_type="RateLimitError", error_message=e,
+                    )
                     last_error = e
                     hit_rate_limit = True
 

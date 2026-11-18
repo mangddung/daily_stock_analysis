@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import re
+import threading
 import uuid
 from collections.abc import Mapping
 from contextvars import ContextVar, Token
@@ -867,6 +868,75 @@ def _notification_flow_event(
     }
 
 
+# ponytail: in-memory, per process; resets on restart. Persist to DB if history across restarts matters.
+_PROVIDER_LAST_SUCCESS: Dict[str, str] = {}
+
+
+def get_provider_last_success() -> Dict[str, str]:
+    """Return provider name -> ISO time of the last real successful call in this process."""
+    return dict(_PROVIDER_LAST_SUCCESS)
+
+
+# Process-wide rate-limit alerts, independent of any analysis trace, so the Web
+# shell can show them on every page. ponytail: in-memory and per-process —
+# cleared on restart and one view per worker; persist if multi-worker matters.
+RATE_LIMIT_ALERT_TTL = timedelta(minutes=15)
+_RATE_LIMIT_ERROR_TYPES = {"RateLimitError", "CircuitOpen"}
+_RATE_LIMIT_TEXT_RE = re.compile(
+    r"(?i)(?<!\d)429(?!\d)|rate[ _-]?limit|quota|too many requests|限流|配额|频率"
+)
+_RATE_LIMITS: Dict[tuple, Dict[str, Any]] = {}
+_RATE_LIMITS_LOCK = threading.Lock()
+
+
+def is_rate_limit_error(error_type: Any, error_message: Any) -> bool:
+    """Heuristic: typed rate-limit errors, or a message that names 429/quota/limit."""
+    if error_type is not None and str(error_type) in _RATE_LIMIT_ERROR_TYPES:
+        return True
+    return bool(_RATE_LIMIT_TEXT_RE.search(f"{error_type or ''} {error_message or ''}"))
+
+
+def note_rate_limit_outcome(
+    kind: str,
+    source: Any,
+    *,
+    success: bool,
+    error_type: Any = None,
+    error_message: Any = None,
+) -> None:
+    """Raise or clear the alert for one (kind, source). kind: llm | market | news."""
+    if not source:
+        return
+    key = (kind, str(source))
+    with _RATE_LIMITS_LOCK:
+        if success:
+            _RATE_LIMITS.pop(key, None)
+            return
+        if not is_rate_limit_error(error_type, error_message):
+            return
+        previous = _RATE_LIMITS.get(key)
+        _RATE_LIMITS[key] = {
+            "kind": kind,
+            "source": str(source),
+            "last_at": datetime.now().astimezone(),
+            "count": (previous["count"] + 1) if previous else 1,
+            "message": sanitize_diagnostic_text(error_message, max_length=160),
+        }
+
+
+def get_rate_limit_alerts() -> List[Dict[str, Any]]:
+    """Return alerts seen within the TTL, newest first; expired ones are dropped."""
+    cutoff = datetime.now().astimezone() - RATE_LIMIT_ALERT_TTL
+    with _RATE_LIMITS_LOCK:
+        for key in [key for key, alert in _RATE_LIMITS.items() if alert["last_at"] < cutoff]:
+            del _RATE_LIMITS[key]
+        alerts = [dict(alert) for alert in _RATE_LIMITS.values()]
+    alerts.sort(key=lambda alert: alert["last_at"], reverse=True)
+    for alert in alerts:
+        alert["last_at"] = alert["last_at"].isoformat()
+    return alerts
+
+
 def record_provider_run(
     *,
     data_type: str,
@@ -883,6 +953,17 @@ def record_provider_run(
     record_count: Optional[int] = None,
 ) -> None:
     """Append a provider attempt to the active context without affecting callers."""
+    if success and not cache_hit and provider:
+        _PROVIDER_LAST_SUCCESS[str(provider)] = datetime.now().astimezone().isoformat()
+    if not (success and cache_hit):  # a cache hit proves nothing about the upstream limit
+        note_rate_limit_outcome(
+            "news" if data_type == "news_search" else "market",
+            provider,
+            success=success,
+            error_type=error_type,
+            error_message=error_message,
+        )
+
     context = get_current_diagnostic_context()
     if context is None:
         return
@@ -943,6 +1024,9 @@ def record_llm_run(
     error_message: Optional[Any] = None,
 ) -> None:
     """Append an LLM call result to the active context without affecting callers."""
+    note_rate_limit_outcome(
+        "llm", model or provider, success=success, error_type=error_type, error_message=error_message,
+    )
     context = get_current_diagnostic_context()
     if context is None:
         return

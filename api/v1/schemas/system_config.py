@@ -159,6 +159,23 @@ class GenerationBackendStatusResponse(BaseModel):
     backends: List[GenerationBackendStatus] = Field(default_factory=list)
 
 
+class RuntimeAlertItem(BaseModel):
+    """One upstream rate-limit alert seen recently by this server process."""
+
+    kind: Literal["llm", "market", "news"]
+    source: str
+    last_at: str
+    count: int
+    message: Optional[str] = None
+
+
+class RuntimeAlertsResponse(BaseModel):
+    """Recent upstream rate-limit alerts; empty when everything is healthy."""
+
+    alerts: List[RuntimeAlertItem] = Field(default_factory=list)
+    ttl_minutes: int
+
+
 class AgentBackendStatusResponse(BaseModel):
     """Compatibility status for the selected Agent Chat backend."""
 

@@ -5,6 +5,7 @@ import { Outlet } from 'react-router-dom';
 import { Drawer } from '../common/Drawer';
 import { SidebarNav } from './SidebarNav';
 import { DesktopUpdateIndicator } from './DesktopUpdateIndicator';
+import { RuntimeAlertIndicator } from './RuntimeAlertIndicator';
 import { cn } from '../../utils/cn';
 import { ThemeToggle } from '../theme/ThemeToggle';
 import { UiLanguageToggle } from '../i18n/UiLanguageToggle';
@@ -50,6 +51,8 @@ export const Shell: React.FC<ShellProps> = ({ children }) => {
         <div className="pointer-events-auto ml-auto flex items-center gap-2">
           <DesktopUpdateIndicator />
           <div className="flex items-center gap-2 lg:hidden">
+            {/* Desktop shows this in the sidebar; the floating corner would cover page headers. */}
+            <RuntimeAlertIndicator />
             <UiLanguageToggle />
             <ThemeToggle />
           </div>

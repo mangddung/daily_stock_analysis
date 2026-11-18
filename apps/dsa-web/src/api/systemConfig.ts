@@ -179,7 +179,25 @@ function toSnakeAgentBackendPayload(
   };
 }
 
+export interface RuntimeAlert {
+  kind: 'llm' | 'market' | 'news';
+  source: string;
+  lastAt: string;
+  count: number;
+  message?: string | null;
+}
+
+export interface RuntimeAlertsResponse {
+  alerts: RuntimeAlert[];
+  ttlMinutes: number;
+}
+
 export const systemConfigApi = {
+  async getRuntimeAlerts(): Promise<RuntimeAlertsResponse> {
+    const response = await apiClient.get<Record<string, unknown>>('/api/v1/system/runtime-alerts');
+    return toCamelCase<RuntimeAlertsResponse>(response.data);
+  },
+
   async getConfig(includeSchema = true): Promise<SystemConfigResponse> {
     const response = await apiClient.get<Record<string, unknown>>('/api/v1/system/config', {
       params: { include_schema: includeSchema },

@@ -19,6 +19,7 @@ from api.v1.schemas.system_config import (
     GenerationBackendStatusPreviewRequest,
     GenerationBackendStatusResponse,
     ImportSystemConfigRequest,
+    RuntimeAlertsResponse,
     SystemConfigConflictResponse,
     SystemConfigResponse,
     SystemConfigSchemaResponse,
@@ -125,6 +126,22 @@ def _raise_env_backup_access_error(exc: EnvBackupAccessDenied) -> None:
             "error": "env_backup_access_denied",
             "message": exc.message,
         },
+    )
+
+
+@router.get(
+    "/runtime-alerts",
+    response_model=RuntimeAlertsResponse,
+    summary="Get recent upstream rate-limit alerts",
+    description="LLM, market data and news providers that hit a rate limit or quota within the alert window.",
+)
+def get_runtime_alerts() -> RuntimeAlertsResponse:
+    """Return rate-limit alerts tracked in this process (sanitized messages only)."""
+    from src.services.run_diagnostics import RATE_LIMIT_ALERT_TTL, get_rate_limit_alerts
+
+    return RuntimeAlertsResponse(
+        alerts=get_rate_limit_alerts(),
+        ttl_minutes=int(RATE_LIMIT_ALERT_TTL.total_seconds() // 60),
     )
 
 

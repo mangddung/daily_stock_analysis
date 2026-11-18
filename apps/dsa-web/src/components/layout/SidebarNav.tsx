@@ -7,6 +7,7 @@ import { useUiLanguage } from '../../contexts/UiLanguageContext';
 import type { UiTextKey } from '../../i18n/uiText';
 import { cn } from '../../utils/cn';
 import { ConfirmDialog } from '../common/ConfirmDialog';
+import { RuntimeAlertIndicator } from './RuntimeAlertIndicator';
 import { StatusDot } from '../common/StatusDot';
 import { UiLanguageToggle } from '../i18n/UiLanguageToggle';
 import { ThemeToggle } from '../theme/ThemeToggle';
@@ -160,6 +161,10 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed = false, onNav
           {!collapsed ? <span className={itemLabelClass}>{t('layout.logout')}</span> : null}
         </button>
       ) : null}
+
+      <div className="mt-3 shrink-0 empty:hidden">
+        <RuntimeAlertIndicator variant={isRail ? 'rail' : 'drawer'} collapsed={collapsed} />
+      </div>
 
       <ConfirmDialog
         isOpen={showLogoutConfirm}
