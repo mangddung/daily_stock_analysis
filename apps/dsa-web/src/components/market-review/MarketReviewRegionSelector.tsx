@@ -10,12 +10,15 @@ import {
 
 type MarketReviewRegionSelectorProps = {
   value?: readonly MarketReviewRegion[];
+  /** Regions the server reviews when no override is chosen; shown next to the server-default label. */
+  serverDefaultRegions?: readonly MarketReviewRegion[];
   disabled?: boolean;
   onChange: (value: MarketReviewRegion[] | undefined) => void;
 };
 
 export const MarketReviewRegionSelector: React.FC<MarketReviewRegionSelectorProps> = ({
   value,
+  serverDefaultRegions,
   disabled = false,
   onChange,
 }) => {
@@ -37,12 +40,18 @@ export const MarketReviewRegionSelector: React.FC<MarketReviewRegionSelectorProp
     tw: t('home.marketRegionTw'),
   };
 
-  const formatRegions = (regions: MarketReviewRegion[]) => (
+  const formatRegions = (regions: readonly MarketReviewRegion[]) => (
     regions.map((region) => regionLabels[region]).join(' + ')
   );
+  let serverDefaultLabel: string | null = null;
+  if (serverDefaultRegions?.length) {
+    serverDefaultLabel = serverDefaultRegions.length === MARKET_REVIEW_REGION_ORDER.length
+      ? t('home.marketRegionAll')
+      : formatRegions(serverDefaultRegions);
+  }
   const triggerLabel = value === undefined
-    ? t('home.marketRegionServerDefault')
-    : formatRegions([...displayedRegions]);
+    ? [t('home.marketRegionServerDefault'), serverDefaultLabel].filter(Boolean).join(' · ')
+    : formatRegions(displayedRegions);
 
   const close = useCallback((restoreFocus = false) => {
     setOpen(false);
@@ -153,7 +162,7 @@ export const MarketReviewRegionSelector: React.FC<MarketReviewRegionSelectorProp
               <span className="min-w-0 flex-1">
                 <span className="block font-medium">{t('home.marketRegionServerDefault')}</span>
                 <span className="mt-0.5 block truncate text-xs text-muted-text">
-                  {t('home.marketRegionDefaultUnavailable')}
+                  {serverDefaultLabel ?? t('home.marketRegionDefaultUnavailable')}
                 </span>
               </span>
               <Check className={cn('h-4 w-4', value === undefined ? 'opacity-100' : 'opacity-0')} aria-hidden="true" />

@@ -2489,7 +2489,8 @@ describe('HomePage', () => {
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: /MARKET/ })).not.toBeInTheDocument();
     });
-    expect(historyApi.deleteByCode).toHaveBeenCalledWith('MARKET');
+    // Market rows delete per reviewed market; this fixture has no recorded market.
+    expect(historyApi.deleteByCode).toHaveBeenCalledWith('MARKET', '');
   });
 
   it('surfaces duplicate task warnings from dashboard submission', async () => {
@@ -2661,6 +2662,12 @@ describe('HomePage', () => {
       marketReviewReport: '市场复盘报告示例文本',
     });
 
+    vi.mocked(systemConfigApi.getConfig).mockResolvedValue({
+      configVersion: 'v1',
+      maskToken: '******',
+      items: [{ key: 'MARKET_REVIEW_REGION', value: 'cn,us', rawValueExists: true, isMasked: false }],
+    });
+
     render(
       <MemoryRouter>
         <HomePage />
@@ -2668,9 +2675,8 @@ describe('HomePage', () => {
     );
 
     const regionSelector = await screen.findByRole('button', { name: '选择大盘复盘市场' });
-    expect(regionSelector).toHaveTextContent('服务器默认');
-    expect(regionSelector).not.toHaveTextContent('A 股');
-    expect(systemConfigApi.getConfig).not.toHaveBeenCalled();
+    await waitFor(() => expect(regionSelector).toHaveTextContent('服务器默认 · A 股 + 美股'));
+    expect(systemConfigApi.getConfig).toHaveBeenCalledWith(false);
 
     fireEvent.click(await screen.findByRole('button', { name: '大盘复盘' }));
 
@@ -2723,7 +2729,6 @@ describe('HomePage', () => {
         regions: ['cn', 'us'],
       });
     });
-    expect(systemConfigApi.getConfig).not.toHaveBeenCalled();
   });
 
   it('keeps report language unset when only the UI language is English', async () => {

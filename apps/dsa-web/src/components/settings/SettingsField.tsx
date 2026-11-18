@@ -4,10 +4,11 @@ import { Badge, Button, Select, Input } from '../common';
 import type { ConfigValidationIssue, SystemConfigFieldSchema, SystemConfigItem } from '../../types/systemConfig';
 import { useUiLanguage } from '../../contexts/UiLanguageContext';
 import { getSettingsHelpContent } from '../../locales/settingsHelp';
-import { getFieldDescriptionZh, getFieldOptionLabel, getFieldTitleZh } from '../../utils/systemConfigI18n';
+import { getFieldDescriptionKo, getFieldDescriptionZh, getFieldOptionLabel, getFieldTitleKo, getFieldTitleZh } from '../../utils/systemConfigI18n';
 import type { UiLanguage, UiTextKey } from '../../i18n/uiText';
 import { cn } from '../../utils/cn';
 import { SettingsHelpButton } from './SettingsHelpButton';
+import { MarketReviewRegionField } from './MarketReviewRegionField';
 
 function normalizeSelectOptions(key: string, options: SystemConfigFieldSchema['options'] = [], locale: UiLanguage) {
   return options.map((option) => {
@@ -83,6 +84,18 @@ function renderFieldControl(
   const commonClass = 'input-surface input-focus-glow h-11 w-full rounded-xl border bg-transparent px-4 text-sm transition-all focus:outline-none disabled:cursor-not-allowed disabled:opacity-60';
   const controlType = schema?.uiControl ?? 'text';
   const isMultiValue = isMultiValueField(item);
+
+  if (item.key === 'MARKET_REVIEW_REGION') {
+    return (
+      <MarketReviewRegionField
+        id={controlId}
+        value={value}
+        defaultValue={schema?.defaultValue ?? undefined}
+        disabled={disabled || !schema?.isEditable}
+        onChange={onChange}
+      />
+    );
+  }
 
   if (controlType === 'textarea') {
     return (

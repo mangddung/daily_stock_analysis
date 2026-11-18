@@ -131,6 +131,10 @@ def _history_share_image_branding(config: object) -> ShareImageBranding:
     return share_image_branding_from_config(config)
 
 
+# Same value as src.core.market_review.MARKET_REVIEW_HISTORY_CODE (not imported: heavy module).
+MARKET_REVIEW_HISTORY_CODE = "MARKET"
+
+
 def _stock_bar_group_key(record_code: str, display_code: str) -> str:
     """Build the stock-bar grouping key from the *persisted* code.
 
@@ -290,6 +294,7 @@ def get_history_list(
                 volume_ratio=item.get("volume_ratio"),
                 turnover_rate=item.get("turnover_rate"),
                 model_used=item.get("model_used"),
+                skills=item.get("skills"),
                 created_at=item.get("created_at"),
                 market_phase_summary=item.get("market_phase_summary"),
                 asset_type=item.get("asset_type"),
@@ -329,14 +334,33 @@ def get_history_list(
 )
 def delete_history_by_code(
     stock_code: str,
+    region: Optional[str] = Query(
+        None,
+        description="仅删除该市场范围的大盘复盘（如 cn、cn,us；空字符串表示未记录市场的旧复盘）",
+    ),
     db_manager: DatabaseManager = Depends(get_database_manager),
 ) -> DeleteHistoryResponse:
     try:
+        # isinstance: direct (non-HTTP) callers get the Query() default object, not None.
+        if isinstance(region, str) and stock_code.strip().upper() == MARKET_REVIEW_HISTORY_CODE:
+            wanted = region.strip().lower()
+            # ponytail: loads every market review row; fine while reviews number in the hundreds.
+            records = db_manager.get_analysis_history(
+                code=MARKET_REVIEW_HISTORY_CODE, days=36500, limit=100000,
+            )
+            record_ids = [
+                r.id for r in records
+                if r.id is not None
+                and (HistoryService._extract_market_review_region(getattr(r, "context_snapshot", None)) or "").lower() == wanted
+            ]
+            deleted = db_manager.delete_analysis_history_records(record_ids) if record_ids else 0
+            return DeleteHistoryResponse(deleted=deleted)
+
         candidates = HistoryService._history_code_filter_candidates(stock_code)
         if not candidates:
             raise HTTPException(
                 status_code=400,
-                detail={"error": "invalid_request", "message": ui_text("stock_code 不能为空", "stock_code must not be empty")},
+                detail={"error": "invalid_request", "message": ui_text("stock_code 不能为空", "stock_code must not be empty", "stock_code는 비워 둘 수 없습니다")},
             )
 
         deleted = 0

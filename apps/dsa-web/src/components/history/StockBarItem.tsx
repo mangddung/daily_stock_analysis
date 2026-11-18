@@ -5,14 +5,15 @@ import { getSentimentColor } from '../../types/analysis';
 import { buildDecisionActionLabelMap, getDecisionActionLabel } from '../../utils/decisionAction';
 import { formatDateTime } from '../../utils/format';
 import { getMarketPhaseSummaryLabel } from '../../utils/marketPhase';
-import { truncateStockName } from '../../utils/stockName';
+import { formatMarketReviewRegionLabel } from '../../utils/marketReviewRegion';
 import { useUiLanguage } from '../../contexts/UiLanguageContext';
 
 interface StockBarItemProps {
   item: StockBarItemType;
   isViewing: boolean;
   onClick: (recordId: number) => void;
-  onDelete?: (stockCode: string) => void;
+  /** region scopes a market-review row delete to that market only. */
+  onDelete?: (stockCode: string, region?: string) => void;
   isDeleting?: boolean;
   isMarketReview?: boolean;
 }
@@ -41,6 +42,7 @@ export const StockBarItemComponent: React.FC<StockBarItemProps> = ({
     ?.replace('市场阶段: ', '')
     .replace('市场阶段：', '')
     .replace('Market phase: ', '');
+  const regionLabel = isMarketReview ? formatMarketReviewRegionLabel(item.region, t) : null;
 
   return (
     <button
@@ -69,7 +71,7 @@ export const StockBarItemComponent: React.FC<StockBarItemProps> = ({
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <span className="block w-full truncate text-sm font-semibold text-foreground tracking-tight">
-                {truncateStockName(stockName)}
+                {stockName}
               </span>
             </div>
             <div className="flex items-center gap-1 shrink-0" data-testid="history-card-actions">
@@ -106,7 +108,7 @@ export const StockBarItemComponent: React.FC<StockBarItemProps> = ({
                   size="xsm"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onDelete(item.stockCode);
+                    onDelete(item.stockCode, isMarketReview ? item.region ?? '' : undefined);
                   }}
                   disabled={isDeleting}
                   className="opacity-0 group-hover/item:opacity-100 transition-opacity h-6 w-6 p-0 flex items-center justify-center"
@@ -123,6 +125,11 @@ export const StockBarItemComponent: React.FC<StockBarItemProps> = ({
             <span className="text-[11px] text-secondary-text font-mono">
               {item.stockCode}
             </span>
+            {regionLabel ? (
+              <span className="text-[11px] font-medium text-amber-500" data-testid="stock-bar-region">
+                {regionLabel}
+              </span>
+            ) : null}
             {item.lastAnalysisTime && (
               <>
                 <span className="w-1 h-1 rounded-full bg-subtle-hover" />

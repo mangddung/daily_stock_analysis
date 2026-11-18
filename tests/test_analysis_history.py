@@ -391,6 +391,30 @@ class AnalysisHistoryTestCase(unittest.TestCase):
         self.assertEqual(remaining, {})
         self.assertEqual(db.get_analysis_history_paginated.call_count, 2)
 
+    def test_delete_market_review_by_region_keeps_other_markets(self) -> None:
+        if delete_history_by_code is None:
+            self.skipTest("fastapi is not installed in this test environment")
+
+        def save_review(query_id: str, snapshot):
+            result = AnalysisResult(
+                code="MARKET", name="大盘复盘", sentiment_score=50,
+                trend_prediction="大盘复盘", operation_advice="查看复盘", analysis_summary="摘要",
+            )
+            return self.db.save_analysis_history(
+                result=result, query_id=query_id, report_type="market_review",
+                news_content="正文", context_snapshot=snapshot, save_snapshot=snapshot is not None,
+            )
+
+        save_review("review_cn", {"market_review_region": "cn"})
+        save_review("review_us", {"market_review_region": "us"})
+        save_review("review_legacy", None)
+
+        self.assertEqual(delete_history_by_code("MARKET", region="cn", db_manager=self.db).deleted, 1)
+        self.assertEqual(delete_history_by_code("MARKET", region="", db_manager=self.db).deleted, 1)
+
+        remaining = self.db.get_analysis_history(code="MARKET", days=36500, limit=10)
+        self.assertEqual([record.query_id for record in remaining], ["review_us"])
+
     def test_delete_history_by_code_rejects_blank_code_before_query(self) -> None:
         if delete_history_by_code is None:
             self.skipTest("fastapi is not installed in this test environment")

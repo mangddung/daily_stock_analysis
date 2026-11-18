@@ -438,6 +438,9 @@ class HistoryService:
             getattr(record, "context_snapshot", None),
         )
         action_fields = self._decision_action_fields_for_record(record, raw_result)
+        snapshot = parse_json_field(getattr(record, "context_snapshot", None))
+        raw_skills = snapshot.get("skills") if isinstance(snapshot, dict) else None
+        skills = [str(skill) for skill in raw_skills] if isinstance(raw_skills, list) else None
         analysis_summary = record.analysis_summary
         if getattr(record, "report_type", None) == "market_review":
             market_review_content = self._extract_market_review_content(record, raw_result)
@@ -462,6 +465,7 @@ class HistoryService:
             "action": action_fields["action"],
             "action_label": action_fields["action_label"],
             "model_used": normalize_model_used(model_used),
+            "skills": skills,
             "created_at": self._serialize_created_at(record.created_at),
             "market_phase_summary": market_phase_summary,
             "asset_type": self._asset_type_for_record(record),

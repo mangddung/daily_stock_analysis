@@ -135,8 +135,11 @@ export const historyApi = {
    * 按股票代码删除所有历史记录
    * @param stockCode 股票代码
    */
-  deleteByCode: async (stockCode: string): Promise<{ deleted: number }> => {
-    const response = await apiClient.delete<Record<string, unknown>>(`/api/v1/history/by-code/${encodeURIComponent(stockCode)}`);
+  deleteByCode: async (stockCode: string, region?: string): Promise<{ deleted: number }> => {
+    const response = await apiClient.delete<Record<string, unknown>>(
+      `/api/v1/history/by-code/${encodeURIComponent(stockCode)}`,
+      region !== undefined ? { params: { region } } : undefined,
+    );
     return toCamelCase<{ deleted: number }>(response.data);
   },
 

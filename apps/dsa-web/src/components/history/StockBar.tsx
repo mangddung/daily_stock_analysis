@@ -12,10 +12,17 @@ interface StockBarProps {
   selectedStockCode?: string;
   selectedRecordId?: number;
   onItemClick: (recordId: number) => void;
-  onDeleteStock?: (stockCode: string) => Promise<void> | void;
+  /** region scopes a market-review row delete to that market only. */
+  onDeleteStock?: (stockCode: string, region?: string) => Promise<void> | void;
   isDeleting?: boolean;
   className?: string;
 }
+
+const isMarketReviewCode = (code: string) => code === 'MARKET';
+
+/** Market reviews share code MARKET with one row per reviewed market; stocks key by code. */
+const rowKey = (item: StockBarItemType) =>
+  (isMarketReviewCode(item.stockCode) ? `MARKET:${item.region ?? ''}` : item.stockCode);
 
 /**
  * 个股栏组件：以股票维度展示历史分析记录，每只股票只显示一条。
@@ -32,13 +39,13 @@ export const StockBar: React.FC<StockBarProps> = ({
   className = '',
 }) => {
   const { t } = useUiLanguage();
-  const isMarketReview = (code: string) => code === 'MARKET';
+  const isMarketReview = isMarketReviewCode;
   const [selectedCodes, setSelectedCodes] = useState<Set<string>>(new Set());
   const selectAllRef = useRef<HTMLInputElement>(null);
   const selectAllId = useId();
 
   const deletableItems = items;
-  const selectedCount = [...selectedCodes].filter((code) => deletableItems.some((item) => item.stockCode === code)).length;
+  const selectedCount = [...selectedCodes].filter((key) => deletableItems.some((item) => rowKey(item) === key)).length;
   const allVisibleSelected = deletableItems.length > 0 && selectedCount === deletableItems.length;
   const someVisibleSelected = selectedCount > 0 && !allVisibleSelected;
 
@@ -60,18 +67,18 @@ export const StockBar: React.FC<StockBarProps> = ({
   const toggleSelectAll = useCallback(() => {
     setSelectedCodes((prev) => {
       if (prev.size === deletableItems.length) return new Set();
-      return new Set(deletableItems.map((item) => item.stockCode));
+      return new Set(deletableItems.map(rowKey));
     });
   }, [deletableItems]);
 
   const handleDeleteSelected = useCallback(async () => {
     if (!onDeleteStock || selectedCodes.size === 0) return;
-    const codesToDelete = [...selectedCodes];
-    for (const code of codesToDelete) {
-      await onDeleteStock(code);
+    const itemsToDelete = deletableItems.filter((item) => selectedCodes.has(rowKey(item)));
+    for (const item of itemsToDelete) {
+      await onDeleteStock(item.stockCode, isMarketReviewCode(item.stockCode) ? item.region ?? '' : undefined);
     }
     setSelectedCodes(new Set());
-  }, [onDeleteStock, selectedCodes]);
+  }, [deletableItems, onDeleteStock, selectedCodes]);
 
   return (
     <aside
@@ -157,8 +164,8 @@ export const StockBar: React.FC<StockBarProps> = ({
             {items.map((item) => {
               const code = item.stockCode || '';
               const isMarket = isMarketReview(code);
-              const isSelected = selectedRecordId === item.id || selectedStockCode === code;
-              const isChecked = selectedCodes.has(code);
+              const isSelected = selectedRecordId === item.id || (!isMarket && selectedStockCode === code);
+              const isChecked = selectedCodes.has(rowKey(item));
 
               return (
                 <div key={`${code}-${item.id}`} className="flex items-start gap-2 group">
@@ -167,7 +174,7 @@ export const StockBar: React.FC<StockBarProps> = ({
                       <input
                         type="checkbox"
                         checked={isChecked}
-                        onChange={() => toggleCode(code)}
+                        onChange={() => toggleCode(rowKey(item))}
                         disabled={isDeleting}
                         className="h-3.5 w-3.5 cursor-pointer rounded border-subtle-hover bg-transparent accent-primary focus:ring-primary/30 disabled:opacity-50"
                       />

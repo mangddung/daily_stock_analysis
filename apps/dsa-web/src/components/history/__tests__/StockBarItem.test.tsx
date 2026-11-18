@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { StockBarItemComponent } from '../StockBarItem';
 import type { StockBarItem } from '../../../types/analysis';
@@ -37,7 +37,8 @@ describe('StockBarItemComponent', () => {
     expect(within(actions).queryByText('CN · 非交易日')).not.toBeInTheDocument();
     expect(within(meta).getByText('CN · 非交易日')).toBeVisible();
 
-    expect(screen.getByText('贵州茅台股票股份.')).toBeVisible();
+    // Full name; the card clips it with CSS to the panel width.
+    expect(screen.getByText('贵州茅台股票股份有限公司')).toBeVisible();
     expect(
       screen.getByRole('button', {
         name: /^贵州茅台股票股份有限公司 600519 历史记录$/,
@@ -219,5 +220,22 @@ describe('StockBarItemComponent', () => {
     expect(within(actions).queryByText('回避 28')).not.toBeInTheDocument();
     expect(within(actions).queryByText('预警 28')).not.toBeInTheDocument();
     expect(within(actions).getByText(/28/)).toBeInTheDocument();
+  });
+
+  it('shows the reviewed market and deletes only that market review', () => {
+    const onDelete = vi.fn();
+    render(
+      <StockBarItemComponent
+        item={{ id: 9, stockCode: 'MARKET', stockName: '大盘复盘', analysisCount: 1, region: 'cn,us' }}
+        isViewing={false}
+        onClick={vi.fn()}
+        onDelete={onDelete}
+        isMarketReview
+      />,
+    );
+
+    expect(screen.getByTestId('stock-bar-region')).toHaveTextContent('A 股 · 美股');
+    fireEvent.click(screen.getByRole('button', { name: /删除 大盘复盘 历史记录/ }));
+    expect(onDelete).toHaveBeenCalledWith('MARKET', 'cn,us');
   });
 });

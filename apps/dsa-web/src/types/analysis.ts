@@ -548,6 +548,7 @@ export interface HistoryItem {
   volumeRatio?: number;
   turnoverRate?: number;
   modelUsed?: string;  // 历史元数据快照，仅用于列表展示，不影响运行时调用与路由
+  skills?: string[] | null;  // 本次分析使用的策略 skill ID；缺省为默认策略
   marketPhaseSummary?: MarketPhaseSummary | null;
   assetType?: 'stock' | 'index';
   createdAt: string;
@@ -612,6 +613,8 @@ export interface StockBarItem {
   modelUsed?: string;
   marketPhaseSummary?: MarketPhaseSummary | null;
   assetType?: 'stock' | 'index';
+  /** Market scope of a market-review row (e.g. "cn", "cn,us"); absent for stocks. */
+  region?: string | null;
 }
 
 export interface StockBarResponse {

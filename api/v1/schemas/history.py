@@ -47,6 +47,7 @@ class HistoryItem(BaseModel):
         None,
         description="分析历史记录中的模型快照，仅用于展示历史元数据；不参与模型配置或运行时路由决策",
     )
+    skills: Optional[List[str]] = Field(None, description="本次分析使用的策略 skill ID 列表；缺省表示默认策略")
     market_phase_summary: Optional[MarketPhaseSummary] = Field(
         None,
         description="本次分析市场阶段低敏摘要",

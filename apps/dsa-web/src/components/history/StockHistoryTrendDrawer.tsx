@@ -28,6 +28,8 @@ interface StockHistoryTrendDrawerProps {
   onLoadMore: () => void;
   onSelectRecord: (recordId: number) => void;
   onRetry: () => void;
+  /** Strategy skill id → display name; unknown ids fall back to the raw id. */
+  strategyNames?: Record<string, string>;
 }
 
 const RANGE_OPTIONS: Array<{ value: StockHistoryRange; labelKey: UiTextKey }> = [
@@ -185,8 +187,11 @@ export const StockHistoryTrendDrawer: React.FC<StockHistoryTrendDrawerProps> = (
   onLoadMore,
   onSelectRecord,
   onRetry,
+  strategyNames = {},
 }) => {
   const { t } = useUiLanguage();
+  const formatStrategy = (skills?: string[] | null) =>
+    skills?.length ? skills.map((id) => strategyNames[id] || id).join(', ') : t('home.defaultStrategyName');
   const currentRecordId = report.meta.id;
   const [selectedRecordId, setSelectedRecordId] = useState(currentRecordId);
   const actionLabels = useMemo(() => buildDecisionActionLabelMap(t), [t]);
@@ -295,15 +300,16 @@ export const StockHistoryTrendDrawer: React.FC<StockHistoryTrendDrawerProps> = (
             <div className="mt-4 overflow-hidden rounded-xl border border-border/60 bg-card/30">
               <table className="w-full table-fixed text-left text-sm">
                 <colgroup>
-                  <col className="w-[15%]" />
-                  <col className="w-[11%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[10%]" />
                   <col className="w-[7%]" />
                   <col className="w-[9%]" />
                   <col className="w-[9%]" />
                   <col className="w-[7%]" />
-                  <col className="w-[9%]" />
-                  <col className="w-[22%]" />
-                  <col className="w-[11%]" />
+                  <col className="w-[8%]" />
+                  <col className="w-[12%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[10%]" />
                 </colgroup>
                 <thead className="border-b border-border/60 bg-background/35 text-xs text-secondary-text">
                   <tr>
@@ -314,6 +320,7 @@ export const StockHistoryTrendDrawer: React.FC<StockHistoryTrendDrawerProps> = (
                     <th className="whitespace-nowrap px-4 py-3 font-medium">{t('stockTrend.changePct')}</th>
                     <th className="whitespace-nowrap px-4 py-3 font-medium">{t('stockTrend.volumeRatio')}</th>
                     <th className="whitespace-nowrap px-4 py-3 font-medium">{t('stockTrend.turnoverRate')}</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">{t('home.strategy')}</th>
                     <th className="whitespace-nowrap px-4 py-3 font-medium">{t('stockTrend.model')}</th>
                     <th className="whitespace-nowrap px-4 py-3 font-medium">{t('stockTrend.table.action')}</th>
                   </tr>
@@ -361,6 +368,9 @@ export const StockHistoryTrendDrawer: React.FC<StockHistoryTrendDrawerProps> = (
                         </td>
                         <td className="px-3 py-3 font-mono text-secondary-text">
                           {formatNumber(item.turnoverRate, 2)}{isPresent(item.turnoverRate) ? '%' : ''}
+                        </td>
+                        <td className="truncate px-3 py-3 text-secondary-text" title={formatStrategy(item.skills)}>
+                          {formatStrategy(item.skills)}
                         </td>
                         <td className="truncate px-3 py-3 text-secondary-text" title={item.modelUsed || t('stockTrend.noModelTitle')}>
                           {formatModelName(item.modelUsed, t)}

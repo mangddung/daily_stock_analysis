@@ -93,4 +93,17 @@ describe('MarketReviewRegionSelector', () => {
     fireEvent.click(cnCheckbox);
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it('shows the known server default regions next to the server-default label', () => {
+    render(
+      <UiLanguageProvider>
+        <MarketReviewRegionSelector serverDefaultRegions={['cn', 'us']} onChange={vi.fn()} />
+      </UiLanguageProvider>,
+    );
+
+    const trigger = screen.getByRole('button', { name: '选择大盘复盘市场' });
+    expect(trigger).toHaveTextContent('服务器默认 · A 股 + 美股');
+    fireEvent.click(trigger);
+    expect(screen.queryByText('由服务器在提交时决定')).not.toBeInTheDocument();
+  });
 });

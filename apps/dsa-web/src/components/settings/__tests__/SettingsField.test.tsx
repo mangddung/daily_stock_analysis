@@ -5,6 +5,7 @@ import { UiLanguageProvider, useUiLanguage } from '../../../contexts/UiLanguageC
 import { getFieldDescriptionZh, getFieldTitleZh } from '../../../utils/systemConfigI18n';
 import { UI_LANGUAGE_STORAGE_KEY } from '../../../utils/uiLanguage';
 import { SettingsField } from '../SettingsField';
+import type { SystemConfigItem } from '../../../types/systemConfig';
 
 describe('SettingsField', () => {
   it.each(['zh', 'en'] as const)('shows the TickPlus recommendation and project registration link (%s)', (language) => {
@@ -365,7 +366,7 @@ describe('SettingsField', () => {
     });
   });
 
-  it('renders MARKET_REVIEW_REGION as free-text field with comma-separated defaults', () => {
+  it('renders MARKET_REVIEW_REGION with Chinese title as a market checkbox dropdown', () => {
     const onChange = vi.fn();
 
     render(
@@ -393,13 +394,12 @@ describe('SettingsField', () => {
       />
     );
 
-    const input = screen.getByLabelText('大盘复盘市场') as HTMLInputElement;
-    expect(input).toHaveValue('cn,jp');
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    const trigger = screen.getByLabelText('大盘复盘市场');
+    expect(trigger.textContent).toContain('日股');
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
 
-    fireEvent.change(input, {
-      target: { value: 'cn,jp,kr' },
-    });
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getAllByRole('checkbox')[4]);
 
     expect(onChange).toHaveBeenCalledWith('MARKET_REVIEW_REGION', 'cn,jp,kr');
   });
@@ -764,6 +764,44 @@ describe('SettingsField', () => {
       } else {
         localStorage.removeItem(UI_LANGUAGE_STORAGE_KEY);
       }
+    }
+  });
+
+  it('renders MARKET_REVIEW_REGION as a multi-select dropdown that saves a comma-separated subset', () => {
+    window.localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, 'en');
+    const onChange = vi.fn();
+    const item: SystemConfigItem = {
+      key: 'MARKET_REVIEW_REGION', value: 'cn,us', rawValueExists: true, isMasked: false,
+      schema: { key: 'MARKET_REVIEW_REGION', title: 'Market Review Region', category: 'system',
+        dataType: 'string', uiControl: 'text', isSensitive: false, isRequired: false,
+        isEditable: true, displayOrder: 48, defaultValue: 'cn',
+        options: ['cn', 'hk', 'us', 'jp', 'kr', 'tw', 'both'],
+        validation: { allowed_values: ['cn', 'hk', 'us', 'jp', 'kr', 'tw', 'both'], delimiter: ',' } },
+    };
+    try {
+      const { rerender } = render(
+        <UiLanguageProvider><SettingsField item={item} value="cn,us" onChange={onChange} /></UiLanguageProvider>,
+      );
+
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByLabelText('Market Review Region'));
+      const checkboxes = screen.getAllByRole('checkbox');
+      expect(checkboxes).toHaveLength(6);
+      expect(checkboxes.filter((box) => (box as HTMLInputElement).checked)).toHaveLength(2);
+
+      // Adding Korea keeps market order; removing the last remaining market is ignored.
+      fireEvent.click(checkboxes[4]);
+      expect(onChange).toHaveBeenLastCalledWith('MARKET_REVIEW_REGION', 'cn,us,kr');
+
+      rerender(<UiLanguageProvider><SettingsField item={item} value="us" onChange={onChange} /></UiLanguageProvider>);
+      onChange.mockClear();
+      fireEvent.click(screen.getAllByRole('checkbox')[2]);
+      expect(onChange).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { pressed: false, name: /All/ }));
+      expect(onChange).toHaveBeenLastCalledWith('MARKET_REVIEW_REGION', 'both');
+    } finally {
+      window.localStorage.removeItem(UI_LANGUAGE_STORAGE_KEY);
     }
   });
 });

@@ -28,7 +28,11 @@ import { useDashboardLifecycle, useHomeDashboardState } from '../hooks';
 import { useWatchlist } from '../hooks/useWatchlist';
 import { useUiLanguage } from '../contexts/UiLanguageContext';
 import type { SetupStatusResponse } from '../types/systemConfig';
-import { normalizeReportLanguage } from '../utils/reportLanguage';
+import {
+  formatMarketReviewRegionLabel,
+  parseMarketReviewRegions,
+  resolveServerMarketReviewRegions,
+} from '../utils/marketReviewRegion';
 import type {
   AnalyzeAsyncResponse,
   HistoryItem,
@@ -294,6 +298,7 @@ const HomePage: React.FC = () => {
   const [marketReviewReport, setMarketReviewReport] = useState<string | null>(null);
   const [marketReviewPayload, setMarketReviewPayload] = useState<MarketReviewPayload | null>(null);
   const [marketReviewRegionOverride, setMarketReviewRegionOverride] = useState<MarketReviewRegion[] | undefined>();
+  const [serverMarketReviewRegions, setServerMarketReviewRegions] = useState<MarketReviewRegion[] | undefined>();
   const [analysisSkills, setAnalysisSkills] = useState<SkillInfo[]>([]);
   const [selectedStrategyId, setSelectedStrategyId] = useState('');
   const [strategyMenuOpen, setStrategyMenuOpen] = useState(false);
@@ -469,6 +474,24 @@ const HomePage: React.FC = () => {
       active = false;
     };
   }, [uiLanguage]);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const config = await systemConfigApi.getConfig(false);
+        const saved = config.items.find((item) => item.key === 'MARKET_REVIEW_REGION')?.value;
+        if (active) {
+          setServerMarketReviewRegions(resolveServerMarketReviewRegions(saved));
+        }
+      } catch {
+        // Unknown server default keeps the opaque "resolved on submit" label.
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -849,11 +872,11 @@ const HomePage: React.FC = () => {
   }, [refreshStockBar, refreshWatchlist]);
 
   const [isDeletingStock, setIsDeletingStock] = useState(false);
-  const handleDeleteStock = useCallback(async (stockCode: string) => {
+  const handleDeleteStock = useCallback(async (stockCode: string, region?: string) => {
     if (isDeletingStock) return;
     setIsDeletingStock(true);
     try {
-      await historyApi.deleteByCode(stockCode);
+      await historyApi.deleteByCode(stockCode, region);
       await refreshStockBar();
       await refreshHistory(true);
       if (stockCode === 'MARKET') {
@@ -1067,7 +1090,8 @@ const HomePage: React.FC = () => {
     [refreshMarketReviewHistory, scrollMarketReviewFeedbackIntoView, stopMarketReviewPolling, t],
   );
 
-  const handleTriggerMarketReview = useCallback(async () => {
+  // regions: rerun a viewed review for its own markets; omitted = selector/server default.
+  const handleTriggerMarketReview = useCallback(async (regions?: MarketReviewRegion[]) => {
     setIsSubmittingMarketReview(true);
     setMarketReviewNotice(null);
     setMarketReviewError(null);
@@ -1077,14 +1101,14 @@ const HomePage: React.FC = () => {
     try {
       const result = await analysisApi.triggerMarketReview({
         sendNotification: notify,
-        regions: marketReviewRegionOverride,
+        regions: regions ?? marketReviewRegionOverride,
       });
       setMarketReviewNotice({
         variant: 'success',
         title: t('home.marketReviewSubmitted'),
         message: t('home.marketReviewSubmittedWithRegion', {
           message: result.message,
-          region: result.region,
+          region: formatMarketReviewRegionLabel(result.region, t) ?? result.region,
         }),
       });
       scrollMarketReviewFeedbackIntoView();
@@ -1416,26 +1440,35 @@ const HomePage: React.FC = () => {
   ]);
 
   const mergedStockBarItems = useMemo<StockBarItem[]>(() => {
-    const latestMarketReview = marketReviewHistoryItems[0];
     const stockItems = stockBarItems.filter((item) => item.stockCode !== 'MARKET');
-    if (!latestMarketReview) {
-      return stockItems;
+
+    // One row per reviewed market (cn, us, cn,us …): the newest review of each, counted
+    // over the loaded review history pages. Items arrive newest first.
+    const latestByRegion = new Map<string, { item: HistoryItem; count: number }>();
+    for (const review of marketReviewHistoryItems) {
+      const regionKey = (review.region || '').trim().toLowerCase();
+      const entry = latestByRegion.get(regionKey);
+      if (entry) {
+        entry.count += 1;
+      } else {
+        latestByRegion.set(regionKey, { item: review, count: 1 });
+      }
     }
-
-    const marketReviewItem: StockBarItem = {
-      id: latestMarketReview.id,
+    const marketReviewItems: StockBarItem[] = [...latestByRegion.values()].map(({ item, count }) => ({
+      id: item.id,
       stockCode: 'MARKET',
-      stockName: latestMarketReview.stockName || t('home.marketReview'),
+      stockName: item.stockName || t('home.marketReview'),
       reportType: 'market_review',
-      sentimentScore: latestMarketReview.sentimentScore,
-      operationAdvice: latestMarketReview.operationAdvice,
-      analysisCount: Math.max(marketReviewHistoryItems.length, 1),
-      lastAnalysisTime: latestMarketReview.createdAt,
-      modelUsed: latestMarketReview.modelUsed,
-      marketPhaseSummary: latestMarketReview.marketPhaseSummary,
-    };
+      sentimentScore: item.sentimentScore,
+      operationAdvice: item.operationAdvice,
+      analysisCount: count,
+      lastAnalysisTime: item.createdAt,
+      modelUsed: item.modelUsed,
+      marketPhaseSummary: item.marketPhaseSummary,
+      region: item.region || null,
+    }));
 
-    return [marketReviewItem, ...stockItems].sort((left, right) => {
+    return [...marketReviewItems, ...stockItems].sort((left, right) => {
       const leftTime = left.lastAnalysisTime ? Date.parse(left.lastAnalysisTime) : 0;
       const rightTime = right.lastAnalysisTime ? Date.parse(right.lastAnalysisTime) : 0;
       return rightTime - leftTime;
@@ -1598,6 +1631,7 @@ const HomePage: React.FC = () => {
             <div className="flex min-w-0 flex-wrap items-center gap-2.5">
               <MarketReviewRegionSelector
                 value={marketReviewRegionOverride}
+                serverDefaultRegions={serverMarketReviewRegions}
                 disabled={isSubmittingMarketReview}
                 onChange={setMarketReviewRegionOverride}
               />
@@ -1798,7 +1832,12 @@ const HomePage: React.FC = () => {
                       disabled={isSubmittingMarketReview}
                       isLoading={isSubmittingMarketReview}
                       loadingText={t('home.submitMarketReview')}
-                      onClick={() => void handleTriggerMarketReview()}
+                      onClick={() => {
+                        const viewedRegion = selectedReport.details?.contextSnapshot?.marketReviewRegion;
+                        void handleTriggerMarketReview(
+                          parseMarketReviewRegions(typeof viewedRegion === 'string' ? viewedRegion : undefined),
+                        );
+                      }}
                     >
                       <BarChart3 className="h-4 w-4" />
                       {t('home.rerunMarketReview')}
@@ -1848,6 +1887,7 @@ const HomePage: React.FC = () => {
                     onLoadMore={() => void loadMoreStockHistory()}
                     onSelectRecord={(recordId) => void selectHistoryItem(recordId)}
                     onRetry={() => void openHistoryTrend()}
+                    strategyNames={Object.fromEntries(analysisSkills.map((skill) => [skill.id, skill.name]))}
                   />
                 ) : (
                   <ReportSummary

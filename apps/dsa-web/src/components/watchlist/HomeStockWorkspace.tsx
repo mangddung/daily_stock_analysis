@@ -100,7 +100,7 @@ interface HomeStockWorkspaceProps {
   selectedAssetType?: AssetAwareAssetType | null;
   selectedRecordId?: number;
   onHistoryItemClick: (recordId: number) => void;
-  onDeleteStock?: (stockCode: string) => Promise<void> | void;
+  onDeleteStock?: (stockCode: string, region?: string) => Promise<void> | void;
   isDeleting?: boolean;
   className?: string;
 }

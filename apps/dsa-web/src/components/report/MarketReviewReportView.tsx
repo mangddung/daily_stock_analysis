@@ -410,6 +410,11 @@ export const MarketReviewReportView: React.FC<MarketReviewReportViewProps> = ({
   );
   const showStructuredMarketTitles = Boolean(marketReviewPayload?.markets);
   const canOpenRunFlow = recordId !== undefined && onOpenRunFlow;
+  const snapshotRegion = report?.details?.contextSnapshot?.marketReviewRegion;
+  const regionLabel = formatMarketReviewRegionLabel(
+    marketReviewPayload?.region || (typeof snapshotRegion === 'string' ? snapshotRegion : undefined),
+    t,
+  );
 
   useEffect(() => {
     if (!recordId || providedContent || hasStructuredContent) {
@@ -494,7 +499,10 @@ export const MarketReviewReportView: React.FC<MarketReviewReportViewProps> = ({
               {meta?.stockCode ? (
                 <span className="home-accent-chip px-2 py-0.5 font-mono">{meta.stockCode}</span>
               ) : null}
-              {meta?.createdAt ? <span>{new Date(meta.createdAt).toLocaleString()}</span> : null}
+              {regionLabel ? (
+                <span className="home-accent-chip px-2 py-0.5" data-testid="market-review-region">{regionLabel}</span>
+              ) : null}
+              {meta?.createdAt ? <span>{new Date(meta.createdAt).toLocaleString(getUiLocale(language))}</span> : null}
             </div>
           </div>
 
