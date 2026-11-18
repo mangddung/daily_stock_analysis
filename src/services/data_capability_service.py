@@ -161,7 +161,35 @@ _PROVIDER_DEFINITIONS: Sequence[_ProviderDefinition] = (
             "kline.daily": ("us",),
         },
     ),
+    # News search providers (src/search_service.py); any one configured enables news.events.
+    *(
+        _ProviderDefinition(
+            name=name,
+            label=label,
+            fetcher_name=None,
+            dataset_markets={"news.events": ("cn", "hk", "us", "jp", "kr", "tw")},
+        )
+        for name, label in (
+            ("tavily", "Tavily"),
+            ("serpapi", "SerpAPI"),
+            ("brave", "Brave Search"),
+            ("bocha", "Bocha"),
+            ("minimax", "MiniMax"),
+            ("anspire", "Anspire"),
+            ("searxng", "SearXNG"),
+        )
+    ),
 )
+
+_NEWS_PROVIDER_CONFIG_ATTRS = {
+    "tavily": "tavily_api_keys",
+    "serpapi": "serpapi_keys",
+    "brave": "brave_api_keys",
+    "bocha": "bocha_api_keys",
+    "minimax": "minimax_api_keys",
+    "anspire": "anspire_api_keys",
+    "searxng": "searxng_base_urls",
+}
 
 _PROVIDER_DEFINITION_MAP = {
     definition.name: definition
@@ -285,6 +313,7 @@ class DataCapabilityService:
 
     def _build_provider_capabilities(self, fetchers: Sequence[Any]) -> List[Dict[str, Any]]:
         fetcher_map = {str(getattr(fetcher, "name", "")): fetcher for fetcher in fetchers}
+        last_success = self._provider_last_success()
         providers: List[Dict[str, Any]] = []
 
         for definition in _PROVIDER_DEFINITIONS:
@@ -295,6 +324,9 @@ class DataCapabilityService:
 
             if not configured and not definition.builtin:
                 status = "unconfigured"
+            elif definition.fetcher_name is None:
+                # News search providers have no fetcher instance; health comes from last_success_at.
+                status = "unknown"
             elif fetcher is None and enabled:
                 status = "unavailable"
                 warnings.append("provider_not_initialized")
@@ -321,11 +353,28 @@ class DataCapabilityService:
                     },
                     "warnings": warnings,
                     "last_error": self._safe_last_error(fetcher),
+                    "last_success_at": last_success.get(definition.name),
                     "cooldown": None,
                 }
             )
 
         return providers
+
+    @staticmethod
+    def _provider_last_success() -> Dict[str, str]:
+        """Map recorded fetcher/source names to provider names, keeping the latest time."""
+        from src.services.run_diagnostics import get_provider_last_success
+
+        result: Dict[str, str] = {}
+        for raw_name, at in get_provider_last_success().items():
+            name = (
+                _FETCHER_TO_PROVIDER.get(raw_name)
+                or _REALTIME_SOURCE_PROVIDER.get(raw_name.lower())
+                or (raw_name.lower() if raw_name.lower() in _NEWS_PROVIDER_CONFIG_ATTRS else None)
+            )
+            if name and at > result.get(name, ""):
+                result[name] = at
+        return result
 
     @staticmethod
     def _provider_runtime_status(fetcher: Any) -> str:
@@ -382,6 +431,8 @@ class DataCapabilityService:
             return _truthy(getattr(self.config, "finnhub_api_key", None))
         if name == "alphavantage":
             return _truthy(getattr(self.config, "alphavantage_api_key", None))
+        if name in _NEWS_PROVIDER_CONFIG_ATTRS:
+            return bool(getattr(self.config, _NEWS_PROVIDER_CONFIG_ATTRS[name], None))
         return False
 
     def _provider_priority(self, definition: _ProviderDefinition, fetcher: Any) -> Optional[int]:

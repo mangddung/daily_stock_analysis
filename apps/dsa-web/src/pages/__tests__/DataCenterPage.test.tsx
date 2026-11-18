@@ -4,10 +4,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { UiLanguageProvider, useUiLanguage } from '../../contexts/UiLanguageContext';
 import DataCenterPage from '../DataCenterPage';
 
-const { getOverview } = vi.hoisted(() => ({ getOverview: vi.fn() }));
+const { getOverview, getConfig, updateConfig } = vi.hoisted(() => ({
+  getOverview: vi.fn(),
+  getConfig: vi.fn(),
+  updateConfig: vi.fn(),
+}));
 
 vi.mock('../../api/dataCapability', () => ({
   dataCapabilityApi: { getOverview: () => getOverview() },
+}));
+
+vi.mock('../../api/systemConfig', () => ({
+  systemConfigApi: {
+    getConfig: (...args: unknown[]) => getConfig(...args),
+    update: (...args: unknown[]) => updateConfig(...args),
+  },
 }));
 
 const overview = {
@@ -112,6 +123,7 @@ function deferred<T>() {
 beforeEach(() => {
   vi.clearAllMocks();
   getOverview.mockResolvedValue(overview);
+  getConfig.mockRejectedValue(new Error('no config access'));
 });
 
 describe('DataCenterPage', () => {
@@ -176,5 +188,51 @@ describe('DataCenterPage', () => {
 
     await waitFor(() => expect(screen.queryByText('Failed to load data overview')).not.toBeInTheDocument());
     expect(screen.getByText('AkShare')).toBeInTheDocument();
+  });
+
+  it('highlights review markets and saves an unconfigured provider inline', async () => {
+    const tushare = {
+      ...overview.providers[0],
+      name: 'tushare',
+      label: 'Tushare',
+      configured: false,
+      status: 'unconfigured',
+      markets: ['cn', 'hk'],
+      warnings: [],
+    };
+    getOverview.mockResolvedValue({ ...overview, providers: [tushare] });
+    const fieldSchema = {
+      category: 'data_source', dataType: 'string', uiControl: 'text', isSensitive: false,
+      isRequired: false, isEditable: true, options: [], validation: {}, displayOrder: 1,
+    };
+    getConfig.mockResolvedValue({
+      configVersion: 'v1',
+      maskToken: '******',
+      items: [
+        { key: 'MARKET_REVIEW_REGION', value: 'cn,us', rawValueExists: true, isMasked: false },
+        { key: 'TUSHARE_TOKEN', value: '', rawValueExists: false, isMasked: false, schema: { ...fieldSchema, key: 'TUSHARE_TOKEN' } },
+      ],
+    });
+    updateConfig.mockResolvedValue({ success: true, configVersion: 'v2' });
+
+    render(<MemoryRouter><DataCenterPage /></MemoryRouter>);
+
+    expect(await screen.findByText('复盘目标市场:')).toBeInTheDocument();
+    expect(screen.getByText('cn')).toHaveClass('text-primary');
+    expect(screen.getByText('hk')).not.toHaveClass('text-primary');
+
+    fireEvent.click(screen.getByRole('button', { name: '配置' }));
+    expect(screen.getByRole('dialog', { name: 'Tushare · 配置' })).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'token-123' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存并应用' }));
+
+    await waitFor(() => expect(updateConfig).toHaveBeenCalledWith({
+      configVersion: 'v1',
+      maskToken: '******',
+      reloadNow: true,
+      items: [{ key: 'TUSHARE_TOKEN', value: 'token-123' }],
+    }));
+    await waitFor(() => expect(getOverview).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });

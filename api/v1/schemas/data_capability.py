@@ -43,6 +43,9 @@ class DataProviderCapability(BaseModel):
     )
     warnings: List[str] = Field(default_factory=list, description="Stable warning codes")
     last_error: Optional[str] = Field(None, description="Last known non-sensitive error summary")
+    last_success_at: Optional[str] = Field(
+        None, description="ISO time of the last real successful call in this process (no active probing)"
+    )
     cooldown: Optional[bool] = Field(None, description="Whether the provider is currently in cooldown")
 
 

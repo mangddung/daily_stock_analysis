@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 <!-- 新条目格式：- [类型] 描述（类型取值：新功能/改进/修复/文档/测试/chore）-->
+- [新功能] 数据中心可直接在弹窗中配置未配置的 Provider，并按当前大盘复盘市场高亮各 Provider 支持的市场；首页复盘市场选择器显示服务器默认市场。Finnhub、Alpha Vantage、Longbridge 凭据现可在 Web 设置中配置。
 - [修复] 问股页面英文界面下仍显示中文的问题，补齐会话侧栏、输入区、导出与错误提示的中英文文案。
 
 - [修复] 告警中心英文界面下页面标题、触发历史、测试结果与通知尝试记录仍显示中文的问题，补齐中英文文案。

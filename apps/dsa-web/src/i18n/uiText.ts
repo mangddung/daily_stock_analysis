@@ -1011,9 +1011,17 @@ const zh = {
   'dataCenter.status': '状态',
   'dataCenter.source': '当前来源',
   'dataCenter.lastSuccess': '最近成功',
+  'dataCenter.categoryMarket': '行情数据',
+  'dataCenter.categoryNews': '新闻数据',
   'dataCenter.notes': '诊断',
   'dataCenter.priorities': '运行时优先级',
   'dataCenter.noPriorities': '暂无优先级配置',
+  'dataCenter.configure': '配置',
+  'dataCenter.saveAndApply': '保存并应用',
+  'dataCenter.configSaveError': '保存配置失败，请检查输入后重试。',
+  'dataCenter.configLoadError': '无法读取当前配置，请前往设置页配置。',
+  'dataCenter.reviewMarkets': '复盘目标市场',
+  'dataCenter.reviewMarketsHint': '高亮的市场为当前服务器的大盘复盘目标',
 } as const;
 
 export type UiTextKey = keyof typeof zh;
@@ -2027,14 +2035,23 @@ const en: Record<UiTextKey, string> = {
   'dataCenter.status': 'Status',
   'dataCenter.source': 'Current source',
   'dataCenter.lastSuccess': 'Last success',
+  'dataCenter.categoryMarket': 'Market data',
+  'dataCenter.categoryNews': 'News data',
   'dataCenter.notes': 'Diagnostics',
   'dataCenter.priorities': 'Runtime priorities',
   'dataCenter.noPriorities': 'No priority configuration',
+  'dataCenter.configure': 'Configure',
+  'dataCenter.saveAndApply': 'Save & apply',
+  'dataCenter.configSaveError': 'Could not save the settings. Check the values and try again.',
+  'dataCenter.configLoadError': 'Could not read the current settings. Configure it on the settings page.',
+  'dataCenter.reviewMarkets': 'Review target markets',
+  'dataCenter.reviewMarketsHint': 'Highlighted markets are the server’s current market review targets',
 };
 
 export const UI_TEXT: Record<UiLanguage, Record<UiTextKey, string>> = {
   zh,
   en,
+  ko,
 };
 
 export type UiTextParams = Record<string, string | number>;

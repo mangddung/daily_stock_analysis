@@ -21,6 +21,7 @@ export type DataProviderCapability = {
   datasetMarkets: Record<string, string[]>;
   warnings: string[];
   lastError?: string | null;
+  lastSuccessAt?: string | null;
   cooldown?: boolean | null;
 };
 

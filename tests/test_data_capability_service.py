@@ -963,6 +963,7 @@ def test_data_capability_api_paths_return_valid_contract() -> None:
                 "dataset_markets": {"quote.realtime": ["cn"]},
                 "warnings": [],
                 "last_error": None,
+                "last_success_at": None,
                 "cooldown": None,
             }
         ],
@@ -1008,3 +1009,34 @@ def test_data_capability_api_paths_return_valid_contract() -> None:
     assert capabilities_response.status_code == 200
     assert overview_response.json() == overview_payload
     assert capabilities_response.json() == overview_payload
+
+
+def test_provider_last_success_comes_from_real_calls_only():
+    from src.services import run_diagnostics
+
+    with patch.dict(run_diagnostics._PROVIDER_LAST_SUCCESS, {}, clear=True):
+        run_diagnostics.record_provider_run(
+            data_type="daily_data", provider="YfinanceFetcher", operation="get_daily_data", success=True
+        )
+        run_diagnostics.record_provider_run(
+            data_type="news", provider="Tavily", operation="search_stock_news", success=True
+        )
+        run_diagnostics.record_provider_run(
+            data_type="news", provider="Brave", operation="search_stock_news_cache", success=True, cache_hit=True
+        )
+        run_diagnostics.record_provider_run(
+            data_type="daily_data", provider="PytdxFetcher", operation="get_daily_data", success=False
+        )
+
+        overview = DataCapabilityService(
+            config=_config(tavily_api_keys=["k"]),
+            fetcher_manager=_FetcherManager([_Fetcher("YfinanceFetcher", 4), _Fetcher("PytdxFetcher", 2)]),
+        ).get_overview()
+
+    providers = {item["name"]: item for item in overview["providers"]}
+    assert providers["yfinance"]["last_success_at"]
+    assert providers["tavily"]["last_success_at"]
+    assert providers["tavily"]["status"] == "unknown"
+    assert providers["brave"]["last_success_at"] is None
+    assert providers["brave"]["status"] == "unconfigured"
+    assert providers["pytdx"]["last_success_at"] is None
