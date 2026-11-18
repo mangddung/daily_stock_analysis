@@ -1,5 +1,5 @@
 import type React from 'react';
-import { Bell, Bot, Database, Layers3, LineChart, Settings2, SlidersHorizontal } from 'lucide-react';
+import { Bell, Bot, Database, Layers3, LineChart, Search, Settings2, SlidersHorizontal, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Badge } from '../common';
 import { useUiLanguage } from '../../contexts/UiLanguageContext';
@@ -12,6 +12,10 @@ interface SettingsCategoryNavProps {
   itemsByCategory: Record<string, SystemConfigItem[]>;
   activeCategory: string;
   onSelect: (category: string) => void;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
+  /** Per-category match counts while searching; null when the search box is empty. */
+  matchCounts: Record<string, number> | null;
 }
 
 const categoryIconMap: Partial<Record<SystemConfigCategory, LucideIcon>> = {
@@ -29,6 +33,9 @@ export const SettingsCategoryNav: React.FC<SettingsCategoryNavProps> = ({
   itemsByCategory,
   activeCategory,
   onSelect,
+  searchQuery,
+  onSearchChange,
+  matchCounts,
 }) => {
   const { language, t } = useUiLanguage();
 
@@ -42,10 +49,38 @@ export const SettingsCategoryNav: React.FC<SettingsCategoryNavProps> = ({
         <p className="mt-1 text-[11px] leading-relaxed text-muted-text">{t('settings.categoryNavDescription')}</p>
       </div>
 
+      <div className="relative mb-2 px-1">
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-text" aria-hidden="true" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(event) => onSearchChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              onSearchChange('');
+            }
+          }}
+          placeholder={t('settings.searchPlaceholder')}
+          aria-label={t('settings.searchPlaceholder')}
+          className="input-surface input-focus-glow h-9 w-full rounded-md border bg-transparent pl-8 pr-8 text-sm focus:outline-none"
+        />
+        {searchQuery ? (
+          <button
+            type="button"
+            onClick={() => onSearchChange('')}
+            aria-label={t('settings.searchClear')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-text hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+        ) : null}
+      </div>
+
       <div className="flex gap-2 overflow-x-auto pb-1 lg:block lg:space-y-1.5 lg:overflow-visible lg:pb-0">
         {categories.map((category) => {
-          const isActive = category.category === activeCategory;
-          const count = (itemsByCategory[category.category] || []).length;
+          const isActive = !matchCounts && category.category === activeCategory;
+          const count = matchCounts ? matchCounts[category.category] ?? 0 : (itemsByCategory[category.category] || []).length;
+          const isDimmed = Boolean(matchCounts) && count === 0;
           const title = getCategoryTitle(category.category, category.title, language);
           const description = getCategoryDescription(category.category, category.description, language);
           const Icon = categoryIconMap[category.category] ?? Layers3;
@@ -59,6 +94,7 @@ export const SettingsCategoryNav: React.FC<SettingsCategoryNavProps> = ({
                 isActive
                   ? 'settings-nav-item-active'
                   : 'border-transparent bg-transparent hover:border-[var(--settings-border)] hover:bg-[var(--settings-surface-hover)]',
+                isDimmed && 'opacity-45',
               )}
               onClick={() => onSelect(category.category)}
               aria-current={isActive ? 'page' : undefined}

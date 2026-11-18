@@ -249,10 +249,16 @@ vi.mock('../../components/settings', async () => {
     categories,
     activeCategory,
     onSelect,
+    searchQuery,
+    onSearchChange,
+    matchCounts,
   }: {
     categories: Array<{ category: string; title: string }>;
     activeCategory: string;
     onSelect: (value: string) => void;
+    searchQuery: string;
+    onSearchChange: (value: string) => void;
+    matchCounts: Record<string, number> | null;
   }) => (
     <nav>
       {categories.map((category) => (
@@ -260,11 +266,17 @@ vi.mock('../../components/settings', async () => {
           key={category.category}
           type="button"
           aria-pressed={activeCategory === category.category}
+          data-match-count={matchCounts ? String(matchCounts[category.category] ?? 0) : undefined}
           onClick={() => onSelect(category.category)}
         >
           {category.title}
         </button>
       ))}
+      <input
+        aria-label="settings-search"
+        value={searchQuery}
+        onChange={(event) => onSearchChange(event.target.value)}
+      />
     </nav>
   ),
   SettingsField: ({
@@ -707,6 +719,24 @@ describe('SettingsPage', () => {
     expect(screen.getByText('认证与登录保护')).toBeInTheDocument();
     expect(screen.getByText('修改密码')).toBeInTheDocument();
     expect(load).toHaveBeenCalled();
+  });
+
+  it('searches settings across categories and groups matches under their category', async () => {
+    renderSettingsPage();
+    await screen.findByRole('heading', { name: '系统设置' });
+
+    fireEvent.change(screen.getByLabelText('settings-search'), { target: { value: 'WeCom' } });
+
+    const results = screen.getByRole('region', { name: '设置搜索结果' });
+    expect(within(results).getByRole('heading', { name: '通知渠道' })).toBeInTheDocument();
+    expect(within(results).getByTestId('settings-field-WECHAT_WEBHOOK_URL')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Notification' })).toHaveAttribute('data-match-count', '1');
+    expect(screen.getByRole('button', { name: 'System' })).toHaveAttribute('data-match-count', '0');
+
+    fireEvent.change(screen.getByLabelText('settings-search'), { target: { value: '' } });
+
+    expect(screen.queryByRole('region', { name: '设置搜索结果' })).not.toBeInTheDocument();
+    expect(screen.getByText('认证与登录保护').closest('section')).not.toHaveAttribute('hidden');
   });
 
   it('renders first-run setup checks and routes setup actions', async () => {

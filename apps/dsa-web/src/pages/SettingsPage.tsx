@@ -25,9 +25,11 @@ import {
   SettingsPanelErrorBoundary,
   SettingsSectionCard,
 } from '../components/settings';
-import { WEB_BUILD_INFO } from '../utils/constants';
+import { UNKNOWN_BUILD_TIME, WEB_BUILD_INFO } from '../utils/constants';
 import { parseStockListValue } from '../utils/stockList';
 import { getCategoryDescription, getCategoryTitle } from '../utils/systemConfigI18n';
+import { searchSettings } from '../utils/settingsSearch';
+import { getUiLocale } from '../utils/uiLanguage';
 import type {
   ConfigValidationIssue,
   SchedulerStatusResponse,
@@ -710,8 +712,28 @@ const SettingsPage: React.FC = () => {
   const [llmChannelHasDirty, setLlmChannelHasDirty] = useState(false);
   const [llmChannelIsSaving, setLlmChannelIsSaving] = useState(false);
   const [llmChannelDraftItems, setLlmChannelDraftItems] = useState<SystemConfigUpdateItem[]>([]);
+  const [settingsSearchQuery, setSettingsSearchQuery] = useState('');
   const envBackupImportRef = useRef<HTMLInputElement | null>(null);
   const setupStatusRequestIdRef = useRef(0);
+  const settingsPageRef = useRef<HTMLDivElement | null>(null);
+  const settingsHeaderRef = useRef<HTMLDivElement | null>(null);
+
+  // Publish the sticky header height so the sticky category nav sits just below it.
+  useEffect(() => {
+    const page = settingsPageRef.current;
+    const header = settingsHeaderRef.current;
+    if (!page || !header) {
+      return;
+    }
+    const publish = () => page.style.setProperty('--settings-header-height', `${header.offsetHeight}px`);
+    publish();
+    if (typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    const observer = new ResizeObserver(publish);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
   const {
     isDesktopRuntime,
     canCheckDesktopUpdate,
@@ -855,9 +877,12 @@ const SettingsPage: React.FC = () => {
   const screeningEnabled = String(screeningItem?.value ?? '').trim().toLowerCase() === 'true';
   const shouldShowFirstRunSetup = activeCategory === 'base';
   const shouldShowScreeningSettings = activeCategory === 'base' && Boolean(screeningItem);
-  const hasConfiguredChannels = Boolean((rawActiveItemMap.get('LLM_CHANNELS') || '').trim()
-    || (rawActiveItemMap.get('MODELFLARE_KEY') || '').trim());
-  const hasLitellmConfig = Boolean((rawActiveItemMap.get('LITELLM_CONFIG') || '').trim());
+  // Channel flags come from ai_model items so settings search can apply the same
+  // visibility rules while another category is active.
+  const aiModelItemMap = new Map((itemsByCategory.ai_model || []).map((item) => [item.key, String(item.value ?? '')]));
+  const hasConfiguredChannels = Boolean((aiModelItemMap.get('LLM_CHANNELS') || '').trim()
+    || (aiModelItemMap.get('MODELFLARE_KEY') || '').trim());
+  const hasLitellmConfig = Boolean((aiModelItemMap.get('LITELLM_CONFIG') || '').trim());
   const hasRuntimeSchedulerMismatch =
     schedulerRuntimeEnabled !== null
     && schedulerOverrideFromUi !== null
@@ -964,11 +989,13 @@ const SettingsPage: React.FC = () => {
     'SCREENING_ENABLED',
   ]);
   const AGENT_HIDDEN_KEYS = new Set(['AGENT_GENERATION_BACKEND']);
-  const activeItems =
-    activeCategory === 'base'
-      ? rawActiveItems.filter((item) => !BASE_HIDDEN_KEYS.has(item.key))
-    : activeCategory === 'ai_model'
-      ? rawActiveItems.filter((item) => {
+  // Generic SettingsField rows a category shows; dedicated panels own the hidden keys.
+  const getVisibleCategoryItems = (category: string): SystemConfigItem[] => {
+    const items = itemsByCategory[category] || [];
+    return category === 'base'
+      ? items.filter((item) => !BASE_HIDDEN_KEYS.has(item.key))
+    : category === 'ai_model'
+      ? items.filter((item) => {
         if (hasConfiguredChannels && LLM_CHANNEL_KEY_RE.test(item.key)) {
           return false;
         }
@@ -977,11 +1004,38 @@ const SettingsPage: React.FC = () => {
         }
         return true;
       })
-      : activeCategory === 'system'
-        ? rawActiveItems.filter((item) => !SYSTEM_HIDDEN_KEYS.has(item.key))
-      : activeCategory === 'agent'
-        ? rawActiveItems.filter((item) => !AGENT_HIDDEN_KEYS.has(item.key))
-      : rawActiveItems;
+      : category === 'system'
+        ? items.filter((item) => !SYSTEM_HIDDEN_KEYS.has(item.key))
+      : category === 'agent'
+        ? items.filter((item) => !AGENT_HIDDEN_KEYS.has(item.key))
+      : items;
+  };
+  const activeItems = getVisibleCategoryItems(activeCategory);
+  const isSearchingSettings = settingsSearchQuery.trim().length > 0;
+  const settingsSearchResults = isSearchingSettings
+    ? searchSettings(
+      categories.map((category) => ({
+        category: category.category,
+        categoryTitle: getCategoryTitle(category.category, category.title, uiLanguage),
+        items: getVisibleCategoryItems(category.category),
+      })),
+      settingsSearchQuery,
+    )
+    : [];
+  const settingsSearchMatchCounts = isSearchingSettings
+    ? Object.fromEntries(settingsSearchResults.map((group) => [group.category, group.items.length]))
+    : null;
+  const openSettingsCategory = (category: string) => {
+    setSettingsSearchQuery('');
+    setActiveCategory(category);
+  };
+  const handleSelectCategory = (category: string) => {
+    if (isSearchingSettings && settingsSearchMatchCounts?.[category]) {
+      document.getElementById(`settings-search-${category}`)?.scrollIntoView({ block: 'start' });
+      return;
+    }
+    openSettingsCategory(category);
+  };
   const promptCacheAdvancedItems = activeCategory === 'ai_model'
     ? activeItems.filter(isPromptCacheAdvancedSetting)
     : [];
@@ -1277,8 +1331,11 @@ const SettingsPage: React.FC = () => {
   );
 
   return (
-    <div className="settings-page min-h-full px-4 pb-6 pt-4 md:px-6">
-      <div className="mb-4 rounded-lg border settings-border bg-card/90 px-4 py-4 shadow-soft-card backdrop-blur-sm">
+    <div ref={settingsPageRef} className="settings-page min-h-full px-4 pb-6 pt-4 md:px-6">
+      <div
+        ref={settingsHeaderRef}
+        className="mb-4 rounded-lg border settings-border bg-card/90 px-4 py-4 shadow-soft-card backdrop-blur-sm lg:sticky lg:top-0 lg:z-20 lg:bg-card"
+      >
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="min-w-0">
             <h1 className="text-xl font-semibold tracking-tight text-foreground">{t('settings.pageTitle')}</h1>
@@ -1342,16 +1399,66 @@ const SettingsPage: React.FC = () => {
         <SettingsLoading />
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
-          <aside className="lg:sticky lg:top-4 lg:self-start">
+          <aside className="lg:sticky lg:top-[calc(var(--settings-header-height,0px)+1rem)] lg:max-h-[calc(100dvh-var(--settings-header-height,0px)-2rem)] lg:self-start lg:overflow-y-auto">
             <SettingsCategoryNav
               categories={categories}
               itemsByCategory={itemsByCategory}
               activeCategory={activeCategory}
-              onSelect={setActiveCategory}
+              onSelect={handleSelectCategory}
+              searchQuery={settingsSearchQuery}
+              onSearchChange={setSettingsSearchQuery}
+              matchCounts={settingsSearchMatchCounts}
             />
           </aside>
 
-          <section className="space-y-4">
+          {isSearchingSettings ? (
+            <section className="space-y-4" aria-label={t('settings.searchResults')}>
+              {settingsSearchResults.length ? settingsSearchResults.map((group) => (
+                <div
+                  key={group.category}
+                  id={`settings-search-${group.category}`}
+                  className="scroll-mt-[calc(var(--settings-header-height,0px)+1rem)]"
+                >
+                  <SettingsSectionCard
+                    title={group.categoryTitle}
+                    description={t('settings.searchMatchCount', { count: group.items.length })}
+                    actions={(
+                      <Button
+                        type="button"
+                        variant="settings-secondary"
+                        size="sm"
+                        onClick={() => openSettingsCategory(group.category)}
+                      >
+                        {t('settings.searchOpenCategory')}
+                      </Button>
+                    )}
+                  >
+                    <div className="divide-y divide-[var(--settings-border-soft)] overflow-hidden rounded-lg border border-[var(--settings-border)] bg-[var(--settings-surface)]">
+                      {group.items.map((item) => (
+                        <SettingsField
+                          key={item.key}
+                          item={item}
+                          value={item.value}
+                          disabled={isSaving || isImportingEnv}
+                          onChange={setDraftValue}
+                          issues={issueByKey[item.key] || []}
+                        />
+                      ))}
+                    </div>
+                  </SettingsSectionCard>
+                </div>
+              )) : (
+                <EmptyState
+                  title={t('settings.searchEmptyTitle')}
+                  description={t('settings.searchEmptyDescription', { query: settingsSearchQuery.trim() })}
+                  className="settings-surface-panel settings-border-strong border-none bg-transparent shadow-none"
+                />
+              )}
+            </section>
+          ) : null}
+
+          {/* Stays mounted while searching so panel-local drafts (LLM channels, scheduler) survive. */}
+          <section className="space-y-4" hidden={isSearchingSettings}>
             {shouldShowFirstRunSetup ? (
               <FirstRunSetupCard
                 status={setupStatus}
@@ -1672,7 +1779,7 @@ const SettingsPage: React.FC = () => {
                 </SettingsSectionCard>
               </SettingsPanelErrorBoundary>
             ) : null}
-            {shouldGuardActiveConfigPanel && hasActiveConfigItems ? (
+            {isSearchingSettings ? null : shouldGuardActiveConfigPanel && hasActiveConfigItems ? (
               <SettingsPanelErrorBoundary
                 title={activeConfigPanelErrorTitle}
                 resetKey={`${activeCategory}:${configVersion}`}
