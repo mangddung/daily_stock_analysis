@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Optional, Union, Dict, Any
 
 from src.ui_language import set_ui_language, ui_text
+from src.services.run_diagnostics_i18n import localize_run_diagnostics
 from src.services.task_message_i18n import localize_task_fields, localize_task_text
 from fastapi import APIRouter, HTTPException, Depends, Query, Body
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -918,7 +919,12 @@ def _format_sse_event(event_type: str, data: Dict[str, Any]) -> str:
     Returns:
         SSE 格式字符串
     """
-    return f"event: {event_type}\ndata: {json.dumps(localize_task_fields(data), ensure_ascii=False)}\n\n"
+    payload = localize_task_fields(data)
+    # Live run-flow events ride on task_progress; localize them like the /flow snapshot does.
+    for key in ("flow_event", "flow_events"):
+        if isinstance(payload, dict) and payload.get(key):
+            payload = {**payload, key: localize_run_diagnostics(payload[key], flow=True)}
+    return f"event: {event_type}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
 
 def _load_history_run_flow_by_query_id(

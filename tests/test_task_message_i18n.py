@@ -60,6 +60,19 @@ class TaskMessageI18nTest(unittest.TestCase):
         with _Lang("en"):
             self.assertEqual(localize_task_text("选股任务已提交"), "Screening task submitted")
 
+    def test_sse_task_progress_localizes_live_flow_event(self):
+        from api.v1.endpoints.analysis import _format_sse_event
+
+        flow_event = {"id": "flow_0001", "title": "日线K线成功", "message": "日线K线 YfinanceFetcher 成功，返回 39 条",
+                      "node": {"label": "日线K线 · YfinanceFetcher"}}
+        with _Lang("ko"):
+            payload = _format_sse_event("task_progress", {"message": "分析完成", "flow_event": flow_event})
+        data = json.loads(payload.split("data: ", 1)[1])
+        self.assertEqual(data["flow_event"]["title"], "일봉 성공")
+        self.assertEqual(data["flow_event"]["message"], "일봉 YfinanceFetcher 성공, 39건 반환")
+        self.assertEqual(data["flow_event"]["node"]["label"], "일봉 · YfinanceFetcher")
+        self.assertEqual(data["flow_event"]["id"], "flow_0001")
+
     def test_sse_event_localized_and_query_param(self):
         from api.v1.endpoints.analysis import _format_sse_event, task_stream
 
