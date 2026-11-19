@@ -58,6 +58,20 @@ class DisclosureReportFieldsTest(unittest.TestCase):
         self.assertIn("- 2026-11-26 Earnings announcement, Third quarter (JPX)", out)
         self.assertIn("- 2026-11-19 주요사항보고서(유상증자결정): 1,000억원 유상증자", out)
 
+    def test_html_in_filing_text_is_neutralized_in_both_renderers(self):
+        from src.services.report_renderer import render
+
+        evil = [{"date": "2026-11-19", "title": "<a href='http://x'>공시</a>", "summary": "<img src=x onerror=1>",
+                 "source": "<b>DART</b>"}]
+        result = _result(disclosures=evil, upcoming_disclosures=evil)
+        lines = "\n".join(NotificationService._disclosure_lines(result, get_report_labels("ko")))
+        out = render(platform="markdown", results=[result], report_date="2026-11-19",
+                     summary_only=False, extra_context={"report_language": "ko"})
+        for text in (lines, out):
+            self.assertNotIn("<a ", text)
+            self.assertNotIn("<img", text)
+            self.assertIn("＜a href='http://x'＞공시＜/a＞", text)
+
     def test_generate_text_records_usage_under_given_call_type(self):
         stub = types.SimpleNamespace(_call_litellm=MagicMock(return_value=("요약", "model-x", {"total_tokens": 9})))
         with patch("src.analyzer.should_persist_usage_telemetry", return_value=True), \

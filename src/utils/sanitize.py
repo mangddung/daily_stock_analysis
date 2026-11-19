@@ -230,3 +230,12 @@ def _mapping_key_parts(key_text: str) -> list[str]:
         for part in re.split(r"[^A-Za-z0-9]+", split_camel)
         if part
     ]
+
+
+def neutralize_html(text: Any) -> str:
+    """Make external text inert in Markdown that may be rendered to HTML (email/AstrBot).
+
+    ``<``/``>`` become fullwidth look-alikes instead of HTML entities, so plain-text
+    channels (Telegram, WeChat) still read naturally while no tag survives markdown2.
+    """
+    return "" if text is None else str(text).replace("<", "＜").replace(">", "＞")

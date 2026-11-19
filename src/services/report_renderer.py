@@ -88,6 +88,7 @@ def _resolve_templates_dir() -> Path:
 
 
 from src.services.empty_news import empty_news_disclosure
+from src.utils.sanitize import neutralize_html
 
 
 def render(
@@ -259,6 +260,7 @@ def render(
             loader=FileSystemLoader(str(templates_dir)),
             autoescape=select_autoescape(default=False),
         )
+        env.filters["nohtml"] = neutralize_html  # external text (filings) that email renders as HTML
         template = env.get_template(template_name)
         return template.render(**context)
     except Exception as e:

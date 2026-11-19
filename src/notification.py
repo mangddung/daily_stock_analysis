@@ -61,7 +61,7 @@ from src.schemas.decision_action import (
     display_operation_advice_for_result,
 )
 from bot.models import BotMessage
-from src.utils.sanitize import sanitize_diagnostic_text
+from src.utils.sanitize import neutralize_html, sanitize_diagnostic_text
 from src.formatters import strip_hidden_markdown_metadata
 from src.utils.data_processing import (
     signal_attribution_has_content,
@@ -423,18 +423,24 @@ class NotificationService(
 
     @staticmethod
     def _disclosure_lines(result: "AnalysisResult", labels: Dict[str, str]) -> List[str]:
-        """Scheduled disclosure dates and recent filings, verbatim from the disclosure service."""
+        """Scheduled disclosure dates and recent filings, verbatim from the disclosure service.
+
+        Titles/summaries come from scraped filings and the LLM, so HTML is neutralized.
+        """
         lines: List[str] = []
         upcoming = getattr(result, "upcoming_disclosures", None) or []
         recent = getattr(result, "disclosures", None) or []
         if upcoming:
             lines.append(f"📅 **{labels['upcoming_disclosures_label']}**:")
-            lines.extend(f"- {i.get('date')} {i.get('title')} ({i.get('source')})" for i in upcoming)
+            lines.extend(
+                f"- {neutralize_html(i.get('date'))} {neutralize_html(i.get('title'))} ({neutralize_html(i.get('source'))})"
+                for i in upcoming
+            )
         if recent:
             lines.append(f"📑 **{labels['recent_disclosures_label']}**:")
             for item in recent:
-                summary = f": {item['summary']}" if item.get("summary") else ""
-                lines.append(f"- {item.get('date')} {item.get('title')}{summary}")
+                summary = f": {neutralize_html(item['summary'])}" if item.get("summary") else ""
+                lines.append(f"- {neutralize_html(item.get('date'))} {neutralize_html(item.get('title'))}{summary}")
         return lines
 
     @staticmethod
