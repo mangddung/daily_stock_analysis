@@ -31,6 +31,8 @@ const GITHUB_OWNER = 'ZhuLinsen';
 const GITHUB_REPO = 'daily_stock_analysis';
 const RELEASES_PAGE_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases`;
 const LATEST_RELEASE_API_URL = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`;
+// Releases come from the upstream repository, so update checks and downloads stay off.
+let desktopAutoUpdateEnabled = false;
 const DEFAULT_REQUEST_TIMEOUT_MS = 5000;
 const DESKTOP_UPDATE_BACKUP_DIR = '.dsa-desktop-update-backup';
 const DESKTOP_UPDATE_BACKUP_MANIFEST_FILE = 'runtime-state.json';
@@ -1687,7 +1689,7 @@ function configureElectronAutoUpdater() {
     return updater;
   }
 
-  updater.autoDownload = true;
+  updater.autoDownload = desktopAutoUpdateEnabled;
   updater.autoInstallOnAppQuit = false;
   if (isWindows && app.isPackaged) {
     const installDirectory = path.dirname(app.getPath('exe'));
@@ -1810,6 +1812,10 @@ async function performElectronUpdaterCheck({ manual = false } = {}) {
 }
 
 async function performDesktopUpdateCheck({ manual = false, notify = false } = {}) {
+  if (!desktopAutoUpdateEnabled) {
+    return desktopUpdateState;
+  }
+
   if (canUseElectronAutoUpdater()) {
     return performElectronUpdaterCheck({ manual, notify });
   }
@@ -2139,6 +2145,9 @@ module.exports = {
   __setBackendProcessForTest,
   __setMainWindowForTest(mainWindowRef = null) {
     mainWindow = mainWindowRef;
+  },
+  __setDesktopAutoUpdateEnabledForTest(enabled) {
+    desktopAutoUpdateEnabled = Boolean(enabled);
   },
   __setDesktopUpdateCheckerForTest(checker) {
     desktopUpdateChecker = typeof checker === 'function' ? checker : checkForDesktopUpdates;

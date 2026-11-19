@@ -837,6 +837,7 @@ test('auto download prompt falls back to error when install path fails', async (
       },
     },
   });
+  mainModule.__setDesktopAutoUpdateEnabledForTest(true);
 
   fs.mkdirSync(exeDir, { recursive: true });
   fs.mkdirSync(userDataDir, { recursive: true });
@@ -920,6 +921,7 @@ test('auto update backup copies Screening hotspot detail directories recursively
       },
     },
   });
+  mainModule.__setDesktopAutoUpdateEnabledForTest(true);
 
   fs.mkdirSync(path.dirname(detailFile), { recursive: true });
   fs.mkdirSync(userDataDir, { recursive: true });
@@ -1473,6 +1475,7 @@ test('createWindow startup path does not throw ReferenceError after restore resu
       },
     },
   });
+  mainModule.__setDesktopAutoUpdateEnabledForTest(true);
 
   await new Promise((resolve) => {
     setTimeout(resolve, 80);
@@ -1501,8 +1504,28 @@ test('createWindow startup path does not throw ReferenceError after restore resu
   });
 });
 
+test('desktop update check is skipped while auto update is disabled', async (t) => {
+  const mainModule = loadMainModule(t);
+  let started = 0;
+
+  mainModule.__setDesktopUpdateCheckerForTest(async () => {
+    started += 1;
+    return { status: mainModule.UPDATE_STATUS.UPDATE_AVAILABLE, latestVersion: '3.13.0' };
+  });
+
+  t.after(() => {
+    mainModule.__setDesktopUpdateCheckerForTest(null);
+  });
+
+  const state = await mainModule.__getIpcMainHandler('desktop:check-for-updates')();
+
+  assert.equal(started, 0);
+  assert.equal(state.status, mainModule.UPDATE_STATUS.IDLE);
+});
+
 test('manual desktop update check rejects overlapping in-flight requests', async (t) => {
   const mainModule = loadMainModule(t);
+  mainModule.__setDesktopAutoUpdateEnabledForTest(true);
   let releaseCheck;
   const pendingCheck = new Promise((resolve) => {
     releaseCheck = resolve;
