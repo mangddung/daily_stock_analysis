@@ -156,10 +156,10 @@ def test_kr_seed_and_index_resolve_kakao_to_kospi_and_exclude_delisted_091990() 
     bundled_index = repo_root / "apps" / "dsa-web" / "public" / "stocks.index.json"
     bundled_index_text = bundled_index.read_text(encoding="utf-8")
 
-    assert "035720.KS,035720.KS,Kakao," in kr_seed_text
+    assert "035720.KS,035720.KS,카카오," in kr_seed_text
     assert "035720.KQ" not in kr_seed_text
     assert "091990.KQ" not in kr_seed_text
-    assert '["035720.KS","035720.KS","Kakao"' in bundled_index_text
+    assert '["035720.KS","035720.KS","카카오"' in bundled_index_text
     assert "035720.KQ" not in bundled_index_text
     assert "091990.KQ" not in bundled_index_text
 

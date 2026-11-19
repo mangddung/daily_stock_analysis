@@ -15,6 +15,7 @@ export const STOCK_INDEX_FIELDS = [
   'assetType',
   'active',
   'popularity',
+  'nameEn',
 ] as const;
 
 /**
@@ -31,6 +32,7 @@ export const INDEX_FIELD = {
   ASSET_TYPE: 7,
   ACTIVE: 8,
   POPULARITY: 9,
+  NAME_EN: 10,
 } as const;
 
 /**

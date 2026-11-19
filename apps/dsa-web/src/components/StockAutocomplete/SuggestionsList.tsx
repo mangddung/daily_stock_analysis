@@ -6,6 +6,7 @@ import type { CSSProperties } from 'react';
 import type { StockSuggestion } from '../../types/stockIndex';
 import { Badge } from '../common';
 import { cn } from '../../utils/cn';
+import { getStockDisplayName } from '../../utils/searchStocks';
 import { useUiLanguage } from '../../contexts/UiLanguageContext';
 import { COMMON_TEXT } from '../../locales/common';
 
@@ -29,6 +30,8 @@ export function SuggestionsList({
   onMouseEnter,
   style,
 }: SuggestionsListProps) {
+  const { language } = useUiLanguage();
+
   if (suggestions.length === 0) {
     return null;
   }
@@ -63,7 +66,7 @@ export function SuggestionsList({
 
             <div className="flex flex-col">
               <span className="text-sm font-medium text-primary-text">
-                {suggestion.nameZh}
+                {getStockDisplayName(suggestion, language)}
               </span>
               <span className="text-sm text-secondary-text">
                 {suggestion.displayCode}

@@ -131,6 +131,9 @@ def validate_stock_index_payload(
             or not math.isfinite(float(popularity))
         ):
             raise ValueError(f"stock index item {index} popularity must be a finite number")
+        # Optional 11th field: official English name (nameEn).
+        if len(item) > 10 and item[10] is not None and not (isinstance(item[10], str) and item[10].strip()):
+            raise ValueError(f"stock index item {index} nameEn must be a non-empty string")
 
     return payload
 

@@ -2,7 +2,7 @@
  * searchStocks unit tests.
  */
 
-import { searchStocks } from '../searchStocks';
+import { getStockDisplayName, searchStocks } from '../searchStocks';
 import type { StockIndexItem } from '../../types/stockIndex';
 import { describe, expect, test } from 'vitest';
 
@@ -560,5 +560,32 @@ describe('searchStocks', () => {
       const results = searchStocks('000016.SH', indexRows);
       expect(results.some(r => r.canonicalCode === 'sh000016')).toBe(true);
     });
+  });
+});
+
+describe('official English name (nameEn)', () => {
+  const rows: StockIndexItem[] = [{
+    canonicalCode: '7203.T',
+    displayCode: '7203.T',
+    nameZh: 'トヨタ自動車',
+    nameEn: 'TOYOTA MOTOR CORPORATION',
+    aliases: [],
+    market: 'JP',
+    assetType: 'stock',
+    active: true,
+    popularity: 100,
+  }];
+
+  test('search matches nameEn and passes it through', () => {
+    const [hit] = searchStocks('toyota motor', rows);
+    expect(hit.canonicalCode).toBe('7203.T');
+    expect(hit.nameEn).toBe('TOYOTA MOTOR CORPORATION');
+  });
+
+  test('English UI shows nameEn, other UIs keep the listing name', () => {
+    expect(getStockDisplayName(rows[0], 'en')).toBe('TOYOTA MOTOR CORPORATION');
+    expect(getStockDisplayName(rows[0], 'ko')).toBe('トヨタ自動車');
+    expect(getStockDisplayName(rows[0], 'zh')).toBe('トヨタ自動車');
+    expect(getStockDisplayName({ nameZh: '贵州茅台' }, 'en')).toBe('贵州茅台');
   });
 });

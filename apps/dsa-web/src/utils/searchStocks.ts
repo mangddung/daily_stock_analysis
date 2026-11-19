@@ -7,9 +7,24 @@
  * - Contains match: code contains, name contains, pinyin contains
  */
 
+import type { UiLanguage } from '../i18n/uiText';
 import type { StockIndexItem, StockSuggestion } from '../types/stockIndex';
 import { normalizeQuery } from './normalizeQuery';
 import { MATCH_SCORE, SEARCH_CONFIG } from './stockIndexFields';
+
+/**
+ * Name to show for a stock in the current UI language.
+ *
+ * Only official names are used (no translation): the English UI shows the
+ * official English name when the index has one; other UIs show the listing's
+ * own official name (Korean for KR, Japanese for JP, Chinese for CN/HK).
+ */
+export function getStockDisplayName(
+  stock: Pick<StockSuggestion, 'nameZh' | 'nameEn'>,
+  language: UiLanguage,
+): string {
+  return language === 'en' && stock.nameEn ? stock.nameEn : stock.nameZh;
+}
 
 export interface SearchOptions {
   /** Limit on number of results to return */
@@ -64,6 +79,7 @@ export function searchStocks(
     canonicalCode: s.item.canonicalCode,
     displayCode: s.item.displayCode,
     nameZh: s.item.nameZh,
+    nameEn: s.item.nameEn,
     market: s.item.market,
     matchType: determineMatchType(s.score),
     matchField: determineMatchField(normalizedQuery, s.item),
@@ -92,7 +108,8 @@ function calculateMatchScore(query: string, item: StockIndexItem): number {
   const normalizedName = normalizeQuery(item.nameZh);
   const normalizedPinyinFull = normalizeQuery(item.pinyinFull || '');
   const normalizedPinyinAbbr = normalizeQuery(item.pinyinAbbr || '');
-  const normalizedAliases = item.aliases?.map(alias => normalizeQuery(alias)) || [];
+  const normalizedAliases = [...(item.aliases || []), ...(item.nameEn ? [item.nameEn] : [])]
+    .map(alias => normalizeQuery(alias));
 
   // 1. Exact match (96-100 points)
   if (q === normalizedCanonicalCode) return 100;
@@ -136,7 +153,8 @@ function determineMatchField(query: string, item: StockIndexItem): 'code' | 'nam
   const normalizedName = normalizeQuery(item.nameZh);
   const normalizedPinyinFull = normalizeQuery(item.pinyinFull || '');
   const normalizedPinyinAbbr = normalizeQuery(item.pinyinAbbr || '');
-  const normalizedAliases = item.aliases?.map(alias => normalizeQuery(alias)) || [];
+  const normalizedAliases = [...(item.aliases || []), ...(item.nameEn ? [item.nameEn] : [])]
+    .map(alias => normalizeQuery(alias));
 
   if (normalizedCanonicalCode.includes(q) ||
       normalizedDisplayCode.includes(q)) {

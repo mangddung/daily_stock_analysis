@@ -534,9 +534,14 @@ class TestIntegration:
         # 验证压缩
         assert len(compressed) == 5
 
-        # 验证字段数量
-        for item in compressed:
-            assert len(item) == 10
+        # 验证字段数量：有官方英文名（非美股 enname）时追加第 11 个字段 nameEn
+        name_en = {item[0]: item[10] for item in compressed if len(item) == 11}
+        assert all(len(item) in (10, 11) for item in compressed)
+        assert name_en == {
+            '00700.HK': 'Tencent',
+            '7203.T': 'Toyota Motor Corporation',
+            '005930.KS': 'Samsung Electronics',
+        }  # A-share row has no enname; US names are already English
 
     def test_market_distribution(self, tmp_path):
         """测试市场分布统计"""

@@ -45,6 +45,8 @@ export interface StockSuggestion {
   displayCode: string;
   /** Chinese name */
   nameZh: string;
+  /** Official English name (JPX/OpenDART/Tushare), when published */
+  nameEn?: string;
   /** Market */
   market: Market;
   /** Match type */
@@ -69,6 +71,7 @@ export type StockIndexTuple = [
   AssetType,
   boolean, // active
   number | undefined, // popularity
+  string?, // nameEn (optional 11th field; omitted in older indexes)
 ];
 
 /**

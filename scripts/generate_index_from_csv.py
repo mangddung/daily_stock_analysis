@@ -415,10 +415,14 @@ def parse_stock_row(row: Dict[str, str], preferred_market: Optional[str] = None)
     if not display_code:
         return None
 
+    # Official English name (JPX/OpenDART/Tushare ``enname``); US names are already English.
+    name_en = '' if market == 'US' else unicodedata.normalize('NFKC', row.get('enname') or '').strip()
+
     return {
         'ts_code': ts_code,
         'symbol': display_code,
         'name': name,
+        'name_en': name_en if name_en and name_en != name else None,
         'market': market,
         'aliases': parse_aliases(row),
     }
@@ -589,6 +593,7 @@ def build_stock_index(stocks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             "assetType": "stock",
             "active": True,
             "popularity": 100,
+            "nameEn": stock.get('name_en'),
         })
 
     return index
@@ -606,7 +611,7 @@ def compress_index(index: List[Dict[str, Any]]) -> List[List]:
     """
     compressed = []
     for item in index:
-        compressed.append([
+        row = [
             item["canonicalCode"],
             item["displayCode"],
             item["nameZh"],
@@ -617,7 +622,12 @@ def compress_index(index: List[Dict[str, Any]]) -> List[List]:
             item["assetType"],
             item["active"],
             item.get("popularity", 0),
-        ])
+        ]
+        # Optional 11th field: official English name. Omitted when absent so the
+        # 10-field tuples (and older readers/remote indexes) stay unchanged.
+        if item.get("nameEn"):
+            row.append(item["nameEn"])
+        compressed.append(row)
     return compressed
 
 
@@ -970,6 +980,50 @@ def run_index_only(output_path: Path, *, test: bool = False) -> List[List[Any]]:
     return merged
 
 
+SEED_MARKETS = ('JP', 'KR')
+
+
+def run_seed_market_only(
+    output_path: Path,
+    market: str,
+    seed_path: Optional[Path] = None,
+    *,
+    test: bool = False,
+) -> List[List[Any]]:
+    """Replace only one seed market's (JP/KR) stock rows of the existing compressed JSON.
+
+    Lets a seed be refreshed without the Tushare CN/HK/US CSVs that a full
+    rebuild needs. The market's rows keep their original position in the payload.
+    """
+    if market not in SEED_MARKETS:
+        raise ValueError(f"unsupported seed market: {market}")
+    seed_path = seed_path or Path(__file__).parent / 'stock_index_seeds' / f'stock_list_{market.lower()}.csv'
+    with open(seed_path, 'r', encoding='utf-8-sig') as f:
+        stocks = [parsed for row in csv.DictReader(f) if (parsed := parse_stock_row(row, market))]
+    stocks = [stock for stock in stocks if stock['market'] == market]
+    if not stocks:
+        raise ValueError(f"no {market} rows parsed from {seed_path}")
+    market_compressed = compress_index(build_stock_index(stocks))
+
+    existing = _load_existing_payload(output_path)
+    validate_stock_index_payload(existing, min_items=0)
+
+    def is_market_stock(item: List[Any]) -> bool:
+        return len(item) > 7 and item[6] == market and item[7] == 'stock'
+
+    insert_at = next((i for i, item in enumerate(existing) if is_market_stock(item)), None)
+    rest = [item for item in existing if not is_market_stock(item)]
+    if insert_at is None:
+        insert_at = next((i for i, item in enumerate(rest) if len(item) > 7 and item[7] == 'index'), len(rest))
+    else:
+        insert_at -= sum(1 for item in existing[:insert_at] if is_market_stock(item))
+    merged = rest[:insert_at] + market_compressed + rest[insert_at:]
+    validate_stock_index_payload(merged, min_items=0)  # format check; size can only grow by the KR block
+    if not test:
+        _atomic_write_json(output_path, merged)
+    return merged
+
+
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(description='从 CSV 生成股票自动补全索引')
@@ -983,6 +1037,11 @@ def main():
         '--index-only',
         action='store_true',
         help='仅合并指数注册表 seed 到现有压缩 JSON，不重建股票索引'
+    )
+    parser.add_argument(
+        '--seed-market',
+        choices=SEED_MARKETS,
+        help='仅用 stock_list_{jp,kr}.csv 替换现有压缩 JSON 中该市场的股票行，不重建其他市场'
     )
     parser.add_argument(
         '--test', '-t',
@@ -1023,6 +1082,14 @@ def main():
         # would-be merged payload returned by ``run_index_only`` rather than
         # reopening the unchanged file.
         print(f"      验证通过：{len(merged)} 条记录")
+        return 0
+
+    if args.seed_market:
+        market = args.seed_market
+        merged = run_seed_market_only(output_path, market, test=args.test)
+        count = sum(1 for item in merged if len(item) > 7 and item[6] == market and item[7] == 'stock')
+        print(f"{market}-only: {len(merged)} rows total, {count} {market} stocks"
+              + (" (test, not written)" if args.test else ""))
         return 0
 
     print(f"数据源：{args.source}")
