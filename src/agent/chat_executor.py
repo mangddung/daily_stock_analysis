@@ -12,7 +12,7 @@ from src.agent.conversation import conversation_manager
 from src.agent.executor import AgentResult, PreparedAgentChat, prepare_agent_chat
 from src.agent.provider_trace import persist_provider_trace_turns
 from src.agent.stock_scope import StockScopeResolution
-from src.storage import DatabaseManager
+from src.storage import DatabaseManager, llm_usage_request
 
 if TYPE_CHECKING:
     from src.services.agent_chat_session_service import AgentChatSessionService, ResolvedChatTurn
@@ -66,18 +66,19 @@ class AgentChatExecutor:
         resolved_turn: Optional[ResolvedChatTurn] = None,
         session_service: Optional[AgentChatSessionService] = None,
     ) -> AgentResult:
-        turn = self.prepare_turn(
-            message=message,
-            session_id=session_id,
-            context=context,
-            selected_skill_ids=selected_skill_ids,
-            resolved_turn=resolved_turn,
-            session_service=session_service,
-        )
-        return self.execute_turn(
-            turn,
-            progress_callback=progress_callback,
-        )
+        with llm_usage_request():
+            turn = self.prepare_turn(
+                message=message,
+                session_id=session_id,
+                context=context,
+                selected_skill_ids=selected_skill_ids,
+                resolved_turn=resolved_turn,
+                session_service=session_service,
+            )
+            return self.execute_turn(
+                turn,
+                progress_callback=progress_callback,
+            )
 
     def prepare_turn(
         self,

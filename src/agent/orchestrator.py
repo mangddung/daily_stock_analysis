@@ -446,18 +446,21 @@ class AgentOrchestrator:
         ``conversation_manager``); the orchestrator focuses on multi-agent
         coordination.
         """
-        turn = self.prepare_turn(
-            message=message,
-            session_id=session_id,
-            context=context,
-            selected_skill_ids=selected_skill_ids,
-            resolved_turn=resolved_turn,
-            session_service=session_service,
-        )
-        return self.execute_turn(
-            turn,
-            progress_callback=progress_callback,
-        )
+        from src.storage import llm_usage_request
+
+        with llm_usage_request():
+            turn = self.prepare_turn(
+                message=message,
+                session_id=session_id,
+                context=context,
+                selected_skill_ids=selected_skill_ids,
+                resolved_turn=resolved_turn,
+                session_service=session_service,
+            )
+            return self.execute_turn(
+                turn,
+                progress_callback=progress_callback,
+            )
 
     def prepare_turn(
         self,

@@ -67,6 +67,68 @@ const dashboardResponse = {
   ],
 };
 
+const callRecord = {
+  id: 1,
+  called_at: '2026-06-11T09:30:00',
+  call_type: 'analysis',
+  model: 'openai/gpt-test',
+  stock_code: '600519',
+  prompt_tokens: 40,
+  completion_tokens: 200,
+  total_tokens: 240,
+};
+
+const callGroupsResponse = {
+  period: 'month',
+  page: 1,
+  page_size: 50,
+  total: 1,
+  items: [
+    {
+      group_id: 'i:1',
+      request_id: null,
+      called_at: callRecord.called_at,
+      call_type: 'analysis',
+      models: ['openai/gpt-test'],
+      stock_code: '600519',
+      calls: 1,
+      prompt_tokens: 40,
+      completion_tokens: 200,
+      total_tokens: 240,
+      items: [callRecord],
+    },
+  ],
+};
+
+const agentCall = { ...callRecord, call_type: 'agent', model: 'claude-x', stock_code: null, total_tokens: 11 };
+
+const groupedCallsResponse = {
+  ...callGroupsResponse,
+  total: 120,
+  items: [
+    {
+      group_id: 'r:req-1',
+      request_id: 'req-1',
+      called_at: callRecord.called_at,
+      call_type: 'agent',
+      models: ['claude-x'],
+      stock_code: null,
+      calls: 2,
+      prompt_tokens: 80,
+      completion_tokens: 400,
+      total_tokens: 22,
+      items: [
+        { ...agentCall, id: 2 },
+        { ...agentCall, id: 3 },
+      ],
+    },
+  ],
+};
+
+function respond(url: string, dashboard: unknown = dashboardResponse, calls: unknown = callGroupsResponse) {
+  return Promise.resolve({ data: url === '/api/v1/usage/calls' ? calls : dashboard });
+}
+
 function makeDashboardResponse(overrides: Partial<typeof dashboardResponse> = {}) {
   return {
     ...dashboardResponse,
@@ -96,7 +158,7 @@ beforeEach(() => {
   window.localStorage.clear();
   window.localStorage.setItem('dsa.uiLanguage', 'zh');
   vi.clearAllMocks();
-  get.mockResolvedValue({ data: dashboardResponse });
+  get.mockImplementation((url: string) => respond(url));
 });
 
 describe('TokenUsagePage', () => {
@@ -121,7 +183,7 @@ describe('TokenUsagePage', () => {
     expect(await screen.findByRole('heading', { name: 'Token usage' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Today' })).toBeInTheDocument();
     expect(screen.getAllByText('Stock analysis')).toHaveLength(2);
-    expect(screen.getByText('Latest 50 LLM token audit records.')).toBeInTheDocument();
+    expect(screen.getByText(/Calls from one chat turn are grouped into one row/)).toBeInTheDocument();
     expect(screen.queryByText('Token 用量监控')).not.toBeInTheDocument();
   });
 
@@ -158,7 +220,10 @@ describe('TokenUsagePage', () => {
       recent_calls: [],
     });
 
-    get.mockImplementation((_url, config) => {
+    get.mockImplementation((url, config) => {
+      if (url === '/api/v1/usage/calls') {
+        return respond(url);
+      }
       const period = config?.params?.period;
       if (period === 'month') {
         return monthRequest.promise;
@@ -180,7 +245,7 @@ describe('TokenUsagePage', () => {
     fireEvent.click(screen.getByRole('button', { name: '今日' }));
 
     await waitFor(() => {
-      expect(get).toHaveBeenLastCalledWith('/api/v1/usage/dashboard', {
+      expect(get).toHaveBeenCalledWith('/api/v1/usage/dashboard', {
         params: { period: 'today', limit: 50 },
       });
     });
@@ -208,8 +273,37 @@ describe('TokenUsagePage', () => {
     fireEvent.click(screen.getByRole('button', { name: '今日' }));
 
     await waitFor(() => {
-      expect(get).toHaveBeenLastCalledWith('/api/v1/usage/dashboard', {
+      expect(get).toHaveBeenCalledWith('/api/v1/usage/dashboard', {
         params: { period: 'today', limit: 50 },
+      });
+    });
+  });
+
+  it('collapses one chat turn into a single row and expands its calls', async () => {
+    get.mockImplementation((url: string) => respond(url, dashboardResponse, groupedCallsResponse));
+    renderPage();
+
+    const toggle = await screen.findByRole('button', { name: /2 次调用/ });
+    expect(screen.getByText('22')).toBeInTheDocument();
+    expect(screen.queryAllByText('11')).toHaveLength(0);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(toggle);
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getAllByText('11')).toHaveLength(2);
+  });
+
+  it('requests the next page of call groups', async () => {
+    get.mockImplementation((url: string) => respond(url, dashboardResponse, groupedCallsResponse));
+    renderPage();
+
+    await screen.findByRole('button', { name: /2 次调用/ });
+    fireEvent.click(screen.getByRole('button', { name: '2' }));
+
+    await waitFor(() => {
+      expect(get).toHaveBeenLastCalledWith('/api/v1/usage/calls', {
+        params: { period: 'month', page: 2, page_size: 50 },
       });
     });
   });

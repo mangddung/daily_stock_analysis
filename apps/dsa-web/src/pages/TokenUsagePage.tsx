@@ -1,8 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Activity, Clock3, Cpu, Database, Gauge, RefreshCw } from 'lucide-react';
-import { usageApi, type UsageDashboard, type UsageModelBreakdown, type UsagePeriod } from '../api/usage';
+import { Activity, ChevronRight, Clock3, Cpu, Database, Gauge, RefreshCw } from 'lucide-react';
+import {
+  usageApi,
+  type UsageCallGroupPage,
+  type UsageCallRecord,
+  type UsageDashboard,
+  type UsageModelBreakdown,
+  type UsagePeriod,
+} from '../api/usage';
 import type { ParsedApiError } from '../api/error';
-import { ApiErrorAlert, AppPage, Card, EmptyState, PageHeader, StatCard } from '../components/common';
+import { ApiErrorAlert, AppPage, Card, EmptyState, PageHeader, Pagination, StatCard } from '../components/common';
 import { useUiLanguage } from '../contexts/UiLanguageContext';
 import type { UiLanguage, UiTextKey, UiTextParams } from '../i18n/uiText';
 import { getUiLocale } from '../utils/uiLanguage';
@@ -11,6 +18,8 @@ import { cn } from '../utils/cn';
 type Translate = (key: UiTextKey, params?: UiTextParams) => string;
 
 const PERIOD_OPTIONS: UsagePeriod[] = ['today', 'month', 'all'];
+
+const CALL_PAGE_SIZE = 50;
 
 const PERIOD_LABEL_KEYS: Record<UsagePeriod, UiTextKey> = {
   today: 'usage.period.today',
@@ -22,6 +31,8 @@ const CALL_TYPE_LABEL_KEYS: Record<string, UiTextKey> = {
   analysis: 'usage.callType.analysis',
   agent: 'usage.callType.agent',
   market_review: 'usage.callType.marketReview',
+  disclosure_summary: 'usage.callType.disclosureSummary',
+  label_translation: 'usage.callType.labelTranslation',
 };
 
 function getLocale(language: UiLanguage): string {
@@ -100,13 +111,48 @@ const ModelUsageCard: React.FC<{ model: UsageModelBreakdown; language: UiLanguag
   );
 };
 
+const CallRow: React.FC<{
+  item: Pick<UsageCallRecord, 'calledAt' | 'promptTokens' | 'completionTokens' | 'totalTokens' | 'stockCode'>;
+  typeCell: React.ReactNode;
+  model: string;
+  language: UiLanguage;
+  className?: string;
+}> = ({ item, typeCell, model, language, className }) => (
+  <tr className={cn('hover:bg-hover/60', className)}>
+    <td className="whitespace-nowrap px-4 py-3 text-secondary-text">{formatDateTime(item.calledAt, language)}</td>
+    <td className="whitespace-nowrap px-4 py-3 text-foreground">{typeCell}</td>
+    <td className="min-w-56 px-4 py-3">
+      <div className="max-w-[18rem] truncate font-medium text-foreground">{model}</div>
+      {item.stockCode ? <div className="text-xs text-secondary-text">{item.stockCode}</div> : null}
+    </td>
+    <td className="whitespace-nowrap px-4 py-3 text-right text-secondary-text">{formatNumber(item.promptTokens, language)}</td>
+    <td className="whitespace-nowrap px-4 py-3 text-right text-secondary-text">{formatNumber(item.completionTokens, language)}</td>
+    <td className="whitespace-nowrap px-4 py-3 text-right font-medium text-foreground">{formatNumber(item.totalTokens, language)}</td>
+  </tr>
+);
+
 const TokenUsagePage: React.FC = () => {
   const { language, t } = useUiLanguage();
   const [period, setPeriod] = useState<UsagePeriod>('month');
+  const [callPage, setCallPage] = useState(1);
   const [dashboard, setDashboard] = useState<UsageDashboard | null>(null);
+  const [callGroups, setCallGroups] = useState<UsageCallGroupPage | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set());
   const [error, setError] = useState<ParsedApiError | null>(null);
   const [loading, setLoading] = useState(true);
   const requestSeqRef = useRef(0);
+
+  const toggleGroup = useCallback((groupId: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupId)) {
+        next.delete(groupId);
+      } else {
+        next.add(groupId);
+      }
+      return next;
+    });
+  }, []);
 
   const loadDashboard = useCallback(async () => {
     const requestSeq = requestSeqRef.current + 1;
@@ -114,11 +160,15 @@ const TokenUsagePage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await usageApi.getDashboard({ period, limit: 50 });
+      const [data, groups] = await Promise.all([
+        usageApi.getDashboard({ period }),
+        usageApi.getCallGroups({ period, page: callPage, pageSize: CALL_PAGE_SIZE }),
+      ]);
       if (requestSeq !== requestSeqRef.current) {
         return;
       }
       setDashboard(data);
+      setCallGroups(groups);
     } catch (err) {
       if (requestSeq !== requestSeqRef.current) {
         return;
@@ -129,7 +179,7 @@ const TokenUsagePage: React.FC = () => {
         setLoading(false);
       }
     }
-  }, [period, t]);
+  }, [period, callPage, t]);
 
   useEffect(() => {
     void loadDashboard();
@@ -156,7 +206,10 @@ const TokenUsagePage: React.FC = () => {
                   <button
                     key={option}
                     type="button"
-                    onClick={() => setPeriod(option)}
+                    onClick={() => {
+                      setPeriod(option);
+                      setCallPage(1);
+                    }}
                     className={cn(
                       'rounded-lg px-3 py-1.5 text-sm transition-colors',
                       period === option
@@ -268,19 +321,54 @@ const TokenUsagePage: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/60">
-                      {dashboard.recentCalls.length ? dashboard.recentCalls.map((item) => (
-                        <tr key={item.id} className="hover:bg-hover/60">
-                          <td className="whitespace-nowrap px-4 py-3 text-secondary-text">{formatDateTime(item.calledAt, language)}</td>
-                          <td className="whitespace-nowrap px-4 py-3 text-foreground">{getCallTypeLabel(item.callType, t)}</td>
-                          <td className="min-w-56 px-4 py-3">
-                            <div className="max-w-[18rem] truncate font-medium text-foreground">{item.model}</div>
-                            {item.stockCode ? <div className="text-xs text-secondary-text">{item.stockCode}</div> : null}
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-3 text-right text-secondary-text">{formatNumber(item.promptTokens, language)}</td>
-                          <td className="whitespace-nowrap px-4 py-3 text-right text-secondary-text">{formatNumber(item.completionTokens, language)}</td>
-                          <td className="whitespace-nowrap px-4 py-3 text-right font-medium text-foreground">{formatNumber(item.totalTokens, language)}</td>
-                        </tr>
-                      )) : (
+                      {callGroups?.items.length ? callGroups.items.map((group) => {
+                        if (group.calls <= 1) {
+                          const item = group.items[0];
+                          return (
+                            <CallRow
+                              key={group.groupId}
+                              item={item}
+                              typeCell={getCallTypeLabel(item.callType, t)}
+                              model={item.model}
+                              language={language}
+                            />
+                          );
+                        }
+                        const expanded = expandedGroups.has(group.groupId);
+                        return (
+                          <React.Fragment key={group.groupId}>
+                            <CallRow
+                              item={group}
+                              typeCell={(
+                                <button
+                                  type="button"
+                                  className="inline-flex items-center gap-1.5 text-left hover:text-cyan"
+                                  aria-expanded={expanded}
+                                  onClick={() => toggleGroup(group.groupId)}
+                                >
+                                  <ChevronRight className={cn('h-4 w-4 shrink-0 transition-transform', expanded ? 'rotate-90' : '')} />
+                                  {getCallTypeLabel(group.callType, t)}
+                                  <span className="rounded-full border border-cyan/20 bg-cyan/10 px-1.5 py-0.5 text-xs text-cyan">
+                                    {t('usage.calls', { count: formatNumber(group.calls, language) })}
+                                  </span>
+                                </button>
+                              )}
+                              model={group.models.join(', ')}
+                              language={language}
+                            />
+                            {expanded ? group.items.map((item) => (
+                              <CallRow
+                                key={item.id}
+                                item={item}
+                                typeCell={<span className="pl-6 text-secondary-text">{getCallTypeLabel(item.callType, t)}</span>}
+                                model={item.model}
+                                language={language}
+                                className="bg-surface-2/40 text-xs"
+                              />
+                            )) : null}
+                          </React.Fragment>
+                        );
+                      }) : (
                         <tr>
                           <td colSpan={6} className="px-4 py-8 text-center text-secondary-text">{t('usage.noRecentCalls')}</td>
                         </tr>
@@ -289,6 +377,11 @@ const TokenUsagePage: React.FC = () => {
                   </table>
                 </div>
               </div>
+              <Pagination
+                currentPage={callPage}
+                totalPages={Math.ceil((callGroups?.total ?? 0) / CALL_PAGE_SIZE)}
+                onPageChange={setCallPage}
+              />
             </section>
           </>
         ) : null}

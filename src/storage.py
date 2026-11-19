@@ -13,6 +13,7 @@ A股自选股智能分析系统 - 存储层
 
 import atexit
 from contextlib import contextmanager
+from contextvars import ContextVar
 import hashlib
 import json
 import logging
@@ -41,11 +42,14 @@ from sqlalchemy import (
     select,
     and_,
     or_,
+    cast,
     delete,
     desc,
+    distinct,
     event,
     func,
     inspect,
+    literal_column,
     MetaData,
     Table,
 )
@@ -878,6 +882,8 @@ class LLMUsage(Base):
     approx_common_prefix_chars = Column(Integer, nullable=True)
     approx_common_prefix_tokens = Column(Integer, nullable=True)
     known_dynamic_marker_positions = Column(Text, nullable=True)
+    # Chat request that produced this call; one Agent turn spans several rows.
+    request_id = Column(String(64), nullable=True)
     called_at = Column(DateTime, default=datetime.now, index=True)
 
 
@@ -924,6 +930,7 @@ _LLM_USAGE_TELEMETRY_COLUMN_SQL: Dict[str, str] = {
     "approx_common_prefix_chars": "INTEGER",
     "approx_common_prefix_tokens": "INTEGER",
     "known_dynamic_marker_positions": "TEXT",
+    "request_id": "VARCHAR(64)",
 }
 _LLM_USAGE_INTEGER_TELEMETRY_COLUMNS = {
     column
@@ -1454,6 +1461,7 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
             # 创建所有表
             Base.metadata.create_all(self._engine)
             self._ensure_llm_usage_telemetry_columns()
+            self._normalize_llm_usage_model_prefixes()
             self._ensure_decision_signal_profile_schema()
             self._ensure_stock_daily_canonical_id()
             self._ensure_intelligence_item_scope_values()
@@ -2240,6 +2248,29 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
                     index_columns.append(column_name)
                 unique_indexes.append(index_columns)
             return unique_indexes
+
+    def _normalize_llm_usage_model_prefixes(self) -> None:
+        """One-time, idempotent backfill: 'anthropic/claude-x' rows -> model 'claude-x', provider 'anthropic'.
+
+        Older agent rows stored the LiteLLM route, splitting one model into two usage groups.
+        """
+        # Runs during __init__, before session_scope() is allowed: use the engine directly.
+        try:
+            with self._engine.begin() as connection:
+                prefixed = connection.execute(
+                    select(LLMUsage.model).where(LLMUsage.model.like("%/%")).distinct()
+                ).scalars().all()
+                for route in prefixed:
+                    base_model, provider = _split_llm_usage_model(route)
+                    if base_model == route:
+                        continue
+                    connection.execute(
+                        LLMUsage.__table__.update()
+                        .where(LLMUsage.model == route)
+                        .values(model=base_model, provider=func.coalesce(LLMUsage.provider, provider))
+                    )
+        except Exception as exc:
+            logger.warning("[LLM usage] model prefix backfill skipped: %s", exc)
 
     def _ensure_llm_usage_telemetry_columns(self) -> None:
         """Add nullable P0a usage telemetry columns to existing SQLite DBs."""
@@ -4698,11 +4729,139 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
             for r in rows
         ]
 
+    def get_llm_usage_call_groups(
+        self,
+        from_dt: datetime,
+        to_dt: datetime,
+        page: int = 1,
+        page_size: int = 50,
+    ) -> Dict[str, Any]:
+        """Return one page of LLM calls grouped by request_id, newest group first.
+
+        Rows sharing a request_id (one Agent chat turn) form one group; rows
+        without one stay single-call groups. Returns {"total": group count,
+        "items": [{group_id, request_id, called_at, call_type, models,
+        stock_code, calls, *_tokens, items: [call rows oldest first]}]}.
+        """
+        page = max(1, int(page or 1))
+        page_size = max(1, min(int(page_size or 50), 200))
+        in_range = and_(LLMUsage.called_at >= from_dt, LLMUsage.called_at <= to_dt)
+        # Prefixes keep a client-chosen request_id from colliding with a row id.
+        # Inline literals render the same SQL text in SELECT and GROUP BY.
+        group_key = func.coalesce(
+            literal_column("'r:'", String) + LLMUsage.request_id,
+            literal_column("'i:'", String) + cast(LLMUsage.id, String),
+        )
+        with self.session_scope() as session:
+            total = session.execute(
+                select(func.count(distinct(group_key))).where(in_range)
+            ).scalar() or 0
+            started_at = func.min(LLMUsage.called_at)
+            page_keys = [
+                row.group_key
+                for row in session.execute(
+                    select(group_key.label("group_key"), started_at.label("started_at"))
+                    .where(in_range)
+                    .group_by(group_key)
+                    .order_by(desc(started_at), desc(func.min(LLMUsage.id)))
+                    .offset((page - 1) * page_size)
+                    .limit(page_size)
+                ).all()
+            ]
+            request_ids = [key[2:] for key in page_keys if key.startswith("r:")]
+            row_ids = [int(key[2:]) for key in page_keys if key.startswith("i:")]
+            rows = session.execute(
+                select(
+                    LLMUsage.id,
+                    LLMUsage.request_id,
+                    LLMUsage.call_type,
+                    LLMUsage.model,
+                    LLMUsage.stock_code,
+                    LLMUsage.prompt_tokens,
+                    LLMUsage.completion_tokens,
+                    LLMUsage.total_tokens,
+                    LLMUsage.called_at,
+                )
+                .where(and_(in_range, or_(LLMUsage.request_id.in_(request_ids), LLMUsage.id.in_(row_ids))))
+                .order_by(LLMUsage.called_at, LLMUsage.id)
+            ).all()
+
+        groups: Dict[str, Dict[str, Any]] = {key: {"group_id": key, "items": []} for key in page_keys}
+        for r in rows:
+            key = f"r:{r.request_id}" if r.request_id is not None else f"i:{r.id}"
+            group = groups.get(key)
+            if group is None:
+                continue
+            group["items"].append({
+                "id": r.id,
+                "call_type": r.call_type,
+                "model": r.model,
+                "stock_code": r.stock_code,
+                "prompt_tokens": r.prompt_tokens,
+                "completion_tokens": r.completion_tokens,
+                "total_tokens": r.total_tokens,
+                "called_at": r.called_at,
+            })
+
+        items = []
+        for key in page_keys:
+            group = groups[key]
+            calls = group["items"]
+            if not calls:
+                continue
+            group.update({
+                "request_id": key[2:] if key.startswith("r:") else None,
+                "called_at": calls[0]["called_at"],
+                "call_type": calls[0]["call_type"],
+                "models": list(dict.fromkeys(call["model"] for call in calls)),
+                "stock_code": next((call["stock_code"] for call in calls if call["stock_code"]), None),
+                "calls": len(calls),
+                "prompt_tokens": sum(call["prompt_tokens"] or 0 for call in calls),
+                "completion_tokens": sum(call["completion_tokens"] or 0 for call in calls),
+                "total_tokens": sum(call["total_tokens"] or 0 for call in calls),
+            })
+            items.append(group)
+        return {"total": total, "items": items}
+
 
 # 便捷函数
 def get_db() -> DatabaseManager:
     """获取数据库管理器实例的快捷方式"""
     return DatabaseManager.get_instance()
+
+
+def _split_llm_usage_model(model: str) -> Tuple[str, Optional[str]]:
+    """'anthropic/claude-x' -> ('claude-x', 'anthropic') so agent and analysis rows group together.
+
+    Analysis paths record the provider's own model name (provider in its own column);
+    the agent path records the LiteLLM route. Unprefixed or unknown names are kept as-is.
+    """
+    if not model or "/" not in model:
+        return model, None
+    try:
+        from litellm import get_llm_provider
+
+        base_model, provider, _, _ = get_llm_provider(model)
+    except Exception:
+        return model, None
+    return (base_model or model), (provider or None)
+
+
+_LLM_USAGE_REQUEST_ID: ContextVar[Optional[str]] = ContextVar("dsa_llm_usage_request_id", default=None)
+
+
+@contextmanager
+def llm_usage_request(request_id: Optional[str] = None):
+    """Tag every LLM usage row persisted inside this block with one request id.
+
+    The value rides a ContextVar, so threads started via ``contextvars.copy_context()``
+    (Agent runner, ``asyncio.to_thread``) inherit it.
+    """
+    token = _LLM_USAGE_REQUEST_ID.set(request_id or str(uuid.uuid4()))
+    try:
+        yield
+    finally:
+        _LLM_USAGE_REQUEST_ID.reset(token)
 
 
 def persist_llm_usage(
@@ -4762,6 +4921,10 @@ def persist_llm_usage(
             telemetry["cache_observation"] = usage.get("cache_observation") or (
                 "no_usage" if not has_usage_payload else "unknown"
             )
+        model, route_provider = _split_llm_usage_model(model)
+        if route_provider and not telemetry.get("provider"):
+            telemetry["provider"] = route_provider
+        telemetry["request_id"] = _LLM_USAGE_REQUEST_ID.get()
         db = DatabaseManager.get_instance()
         db.record_llm_usage(
             call_type=call_type,

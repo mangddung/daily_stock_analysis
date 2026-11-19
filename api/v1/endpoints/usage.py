@@ -10,7 +10,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query
 
 from api.deps import get_database_manager
-from api.v1.schemas.usage import UsageDashboardResponse, UsageSummaryResponse
+from api.v1.schemas.usage import UsageCallGroupsResponse, UsageDashboardResponse, UsageSummaryResponse
 from src.storage import DatabaseManager
 
 logger = logging.getLogger(__name__)
@@ -98,3 +98,34 @@ def get_usage_dashboard(
     payload = _build_summary_payload(normalized_period, from_dt, to_dt, data)
     payload["recent_calls"] = [_enrich_call_record(row) for row in records]
     return UsageDashboardResponse(**payload)
+
+
+@router.get(
+    "/calls",
+    response_model=UsageCallGroupsResponse,
+    summary="Paginated LLM call groups",
+    description="LLM calls grouped by request (one Agent chat turn = one group), newest first.",
+)
+def get_usage_call_groups(
+    period: str = Query("month", description="'today' | 'month' | 'all'"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    db_manager: DatabaseManager = Depends(get_database_manager),
+) -> UsageCallGroupsResponse:
+    normalized_period = _normalize_period(period)
+    from_dt, to_dt = _date_range(normalized_period)
+    data = db_manager.get_llm_usage_call_groups(from_dt, to_dt, page=page, page_size=page_size)
+    groups = [
+        {
+            **_enrich_call_record(group),
+            "items": [_enrich_call_record(row) for row in group["items"]],
+        }
+        for group in data["items"]
+    ]
+    return UsageCallGroupsResponse(
+        period=normalized_period,
+        page=page,
+        page_size=page_size,
+        total=data["total"],
+        items=groups,
+    )

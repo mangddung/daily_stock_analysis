@@ -50,3 +50,25 @@ class UsageSummaryResponse(BaseModel):
 
 class UsageDashboardResponse(UsageSummaryResponse):
     recent_calls: List[UsageCallRecord]
+
+
+class UsageCallGroup(BaseModel):
+    group_id: str
+    request_id: Optional[str] = None
+    called_at: str = Field(..., description="ISO datetime of the group's first call")
+    call_type: str
+    models: List[str]
+    stock_code: Optional[str] = None
+    calls: int
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    items: List[UsageCallRecord]
+
+
+class UsageCallGroupsResponse(BaseModel):
+    period: str = Field(..., description="'today' | 'month' | 'all'")
+    page: int
+    page_size: int
+    total: int = Field(..., description="Number of call groups in the period")
+    items: List[UsageCallGroup]

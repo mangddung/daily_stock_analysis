@@ -1756,13 +1756,16 @@ class TestPersistUsageHelper(unittest.TestCase):
             self.assertIsNone(row.tokenizer_version)
 
     def test_persist_usage_never_raises(self):
-        # Pass a deliberately bad db state by resetting the singleton
-        DatabaseManager.reset_instance()
-        # Should silently swallow the error, not raise
-        try:
-            persist_llm_usage({"total_tokens": 5}, "m", call_type="analysis")
-        except Exception as exc:
-            self.fail(f"persist_llm_usage raised unexpectedly: {exc}")
+        # Simulate a broken DB. Resetting the singleton instead would make
+        # get_instance() open the real DATABASE_PATH and write a row there.
+        with patch.object(DatabaseManager, "get_instance", side_effect=RuntimeError("db unavailable")):
+            # Should silently swallow the error, not raise
+            try:
+                persist_llm_usage({"total_tokens": 5}, "m", call_type="analysis")
+            except Exception as exc:
+                self.fail(f"persist_llm_usage raised unexpectedly: {exc}")
+        with self.db.session_scope() as session:
+            self.assertEqual(session.query(LLMUsage).count(), 0)
 
 
 class TestLLMUsageMigration(unittest.TestCase):

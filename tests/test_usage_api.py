@@ -66,8 +66,58 @@ class FakeUsageDbManager:
             }
         ]
 
+    def get_llm_usage_call_groups(self, from_dt, to_dt, page=1, page_size=50):
+        self.call_groups_args = (page, page_size)
+        call = {
+            "id": 8,
+            "called_at": datetime(2026, 6, 11, 9, 31, 0),
+            "call_type": "agent",
+            "model": "claude-x",
+            "stock_code": None,
+            "prompt_tokens": 5,
+            "completion_tokens": 5,
+            "total_tokens": 10,
+        }
+        return {
+            "total": 51,
+            "items": [
+                {
+                    "group_id": "r:req-1",
+                    "request_id": "req-1",
+                    "called_at": call["called_at"],
+                    "call_type": "agent",
+                    "models": ["claude-x"],
+                    "stock_code": None,
+                    "calls": 2,
+                    "prompt_tokens": 10,
+                    "completion_tokens": 10,
+                    "total_tokens": 20,
+                    "items": [call, {**call, "id": 9}],
+                }
+            ],
+        }
+
 
 class UsageDashboardApiTestCase(unittest.TestCase):
+    def test_calls_returns_paginated_groups(self):
+        db = FakeUsageDbManager()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            app = create_app(static_dir=Path(temp_dir))
+            app.dependency_overrides[get_database_manager] = lambda: db
+            client = TestClient(app)
+
+            response = client.get("/api/v1/usage/calls?period=today&page=2&page_size=50")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(db.call_groups_args, (2, 50))
+        body = response.json()
+        self.assertEqual((body["period"], body["page"], body["page_size"], body["total"]), ("today", 2, 50, 51))
+        group = body["items"][0]
+        self.assertEqual(group["calls"], 2)
+        self.assertEqual(group["called_at"], "2026-06-11T09:31:00")
+        self.assertEqual([item["id"] for item in group["items"]], [8, 9])
+        self.assertEqual(group["items"][0]["called_at"], "2026-06-11T09:31:00")
+
     def test_dashboard_returns_token_summary_and_recent_calls(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             app = create_app(static_dir=Path(temp_dir))

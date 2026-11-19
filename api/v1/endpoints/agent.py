@@ -21,7 +21,7 @@ from src.config import get_config
 from src.services.agent_chat_session_service import AgentChatSessionService
 from src.services.agent_model_service import list_agent_model_deployments
 from src.report_language import localize_strategy_skill
-from src.storage import ChatSessionStateConflict
+from src.storage import ChatSessionStateConflict, llm_usage_request
 from src.ui_language import current_ui_language, ui_text
 
 # Tool name -> Chinese display name mapping
@@ -166,6 +166,12 @@ def _public_chat_state(*, active_stock_context, session_state_version, session_g
         "session_generation": session_generation,
         "session_state": {"selected_skill_ids": selected_skill_ids},
     }
+
+
+def _with_usage_request(request_id, fn, *args):
+    """Run fn with LLM usage rows tagged by request_id (groups one chat turn)."""
+    with llm_usage_request(request_id):
+        return fn(*args)
 
 
 def _prepare_chat_request(request, config, session_id, session_service):
@@ -344,15 +350,16 @@ async def agent_chat(
     backend_id = _select_agent_chat_backend(config)
 
     session_id = request.session_id or str(uuid.uuid4())
-    
+    request_id = request.request_id or str(uuid.uuid4())
+
     try:
         executor, turn, accepted, clarification = await asyncio.to_thread(
-            _prepare_chat_request, request, config, session_id, session_service,
+            _with_usage_request, request_id, _prepare_chat_request, request, config, session_id, session_service,
         )
         if clarification is not None:
             result = await asyncio.to_thread(_clarification_result, session_service, accepted, clarification, backend_id)
         else:
-            result = await asyncio.to_thread(executor.execute_turn, turn)
+            result = await asyncio.to_thread(_with_usage_request, request_id, executor.execute_turn, turn)
 
         return ChatResponse(
             success=result.success,
@@ -678,7 +685,7 @@ async def agent_chat_stream(
         try:
             try:
                 executor, turn, accepted, clarification = await asyncio.to_thread(
-                    _prepare_chat_request, request, config, session_id, session_service,
+                    _with_usage_request, request_id, _prepare_chat_request, request, config, session_id, session_service,
                 )
             except asyncio.CancelledError:
                 raise
@@ -713,7 +720,9 @@ async def agent_chat_stream(
                          "backend": backend_id, "request_id": request_id, "error_code": None}
                 yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
                 return
-            fut = loop.run_in_executor(None, contextvars.copy_context().run, run_sync, executor, turn)
+            fut = loop.run_in_executor(
+                None, contextvars.copy_context().run, _with_usage_request, request_id, run_sync, executor, turn,
+            )
             while True:
                 try:
                     event = await asyncio.wait_for(queue.get(), timeout=300.0)
