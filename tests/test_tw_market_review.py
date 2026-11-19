@@ -73,7 +73,8 @@ def test_tw_prompt_uses_taiwan_context_and_discloses_partial_coverage(language):
 
     assert analyzer.profile.region == analyzer.strategy.region == "tw"
     assert not analyzer.profile.has_market_stats
-    assert not analyzer.profile.has_sector_rankings
+    # TW sector rankings come from TWSE sector indices; with none fetched the prompt still discloses the gap.
+    assert analyzer.profile.has_sector_rankings
     assert "TWOII:" in prompt
     assert "TWII:" not in prompt
     assert "台股" in prompt if language == "zh" else "Taiwan market" in prompt
@@ -147,7 +148,9 @@ def test_tw_overview_uses_taipei_date_and_never_fetches_cn_stats(provider_error)
     with patch("src.market_analyzer.DataFetcherManager") as manager, patch(
         "src.market_analyzer.get_market_now",
         return_value=datetime(2026, 11, 10, 0, 30, tzinfo=ZoneInfo("Asia/Taipei")),
-    ) as market_now:
+    ) as market_now, patch(
+        "src.market_analyzer.get_region_sector_rankings", return_value=([], [])
+    ) as sectors:
         if provider_error:
             manager.return_value.get_main_indices.side_effect = RuntimeError("source unavailable")
         else:
@@ -157,6 +160,7 @@ def test_tw_overview_uses_taipei_date_and_never_fetches_cn_stats(provider_error)
     assert overview.date == "2026-11-10"
     manager.return_value.get_main_indices.assert_called_once_with(region="tw")
     assert [call[0] for call in manager.return_value.method_calls] == ["get_main_indices"]
+    sectors.assert_called_once_with("tw", 5)
     assert len(overview.indices) == (0 if provider_error else 1)
 
 

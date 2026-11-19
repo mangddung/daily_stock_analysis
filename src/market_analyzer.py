@@ -38,6 +38,7 @@ from src.schemas.market_light import MARKET_LIGHT_REGIONS, MarketLightSnapshot
 from src.services.run_diagnostics import record_llm_run, record_llm_run_started
 from src.services.intelligence_service import IntelligenceService
 from data_provider.base import DataFetcherManager
+from data_provider.sector_rankings import get_region_sector_rankings
 
 logger = logging.getLogger(__name__)
 
@@ -684,11 +685,13 @@ Focus on index trend, liquidity, and sector rotation to shape the next-session t
         if self.profile.has_market_stats:
             self._get_market_statistics(overview)
 
-        # 3. 获取板块涨跌榜（A 股有，美股暂无）
+        # 3. 获取板块涨跌榜（A 股走数据源管理器；其他市场走行业 ETF / 官方行业指数）
         if self.profile.has_sector_rankings:
             self._get_sector_rankings(overview)
-            self._get_concept_rankings(overview)
-        
+            if self.region == "cn":  # 概念/题材榜只有 A 股数据源
+                self._get_concept_rankings(overview)
+            self._localize_ranking_names(overview)
+
         # 4. 获取北向资金（可选）
         # self._get_north_flow(overview)
         
@@ -774,7 +777,10 @@ Focus on index trend, liquidity, and sector rotation to shape the next-session t
         try:
             logger.info("[大盘] %s action=get_sector_rankings status=start", self._log_context())
 
-            top_sectors, bottom_sectors = self.data_manager.get_sector_rankings(5)
+            if self.region == "cn":
+                top_sectors, bottom_sectors = self.data_manager.get_sector_rankings(5)
+            else:
+                top_sectors, bottom_sectors = get_region_sector_rankings(self.region, 5)
 
             if top_sectors or bottom_sectors:
                 overview.top_sectors = top_sectors
@@ -791,6 +797,25 @@ Focus on index trend, liquidity, and sector rotation to shape the next-session t
 
         except Exception as e:
             logger.error("[大盘] %s action=get_sector_rankings status=failed error=%s", self._log_context(), e)
+
+    def _localize_ranking_names(self, overview: MarketOverview) -> None:
+        """Sector/concept names arrive in the market's language; show them in the report language."""
+        rows = [*overview.top_sectors, *overview.bottom_sectors, *overview.top_concepts, *overview.bottom_concepts]
+        # getattr_static: only a real analyzer (not a test double) spends an LLM call here.
+        if not rows or self.analyzer is None or getattr_static(self.analyzer, "generate_text", None) is None:
+            return
+        from src.services.label_translation import localize_rows
+
+        try:
+            localize_rows(
+                rows,
+                self._get_output_language(),
+                lambda prompt: self.analyzer.generate_text(
+                    prompt, max_tokens=2048, temperature=0.0, call_type="label_translation",
+                ),
+            )
+        except Exception as exc:  # fail-open: original names are still correct, just untranslated
+            logger.warning("[大盘] %s action=localize_rankings status=failed error=%s", self._log_context(), exc)
 
     def _get_concept_rankings(self, overview: MarketOverview):
         """获取概念/题材涨跌榜（fail-open）。"""
@@ -1781,10 +1806,16 @@ Focus on index trend, liquidity, and sector rotation to shape the next-session t
         label = str(scores["temperature_label"])
         return score, label
 
-    def _build_output_template_sections(self, review_language: str) -> str:
+    def _sector_rankings_in_prompt(self, overview: MarketOverview) -> bool:
+        """A-shares always show the sector section; other markets only when ETF/index rows arrived."""
+        if not self.profile.has_sector_rankings:
+            return False
+        return self.region == "cn" or bool(overview.top_sectors or overview.bottom_sectors)
+
+    def _build_output_template_sections(self, review_language: str, sectors_on: bool) -> str:
         """Build LLM output sections according to market data capabilities."""
         if review_language == "en":
-            if self.profile.has_market_stats and self.profile.has_sector_rankings:
+            if self.profile.has_market_stats and sectors_on:
                 return """### 3. Fund Flows
 (Interpret what turnover, participation, and flow signals imply.)
 
@@ -1806,7 +1837,7 @@ Focus on index trend, liquidity, and sector rotation to shape the next-session t
                 sections.append(f"""### {section_number}. Fund Flows
 (Interpret only the provided turnover, participation, breadth, and flow signals.)""")
                 section_number += 1
-            if self.profile.has_sector_rankings:
+            if sectors_on:
                 sections.append(f"""### {section_number}. Sector Highlights
 (Analyze only the provided industry-sector and concept/theme rankings.)""")
                 section_number += 1
@@ -1822,7 +1853,7 @@ Focus on index trend, liquidity, and sector rotation to shape the next-session t
             ])
             return "\n\n".join(sections)
 
-        if self.profile.has_market_stats and self.profile.has_sector_rankings:
+        if self.profile.has_market_stats and sectors_on:
             return """### 三、板块主线
 （区分行业板块与概念题材，分析领涨/领跌背后的逻辑、持续性和是否形成主线）
 
@@ -1847,7 +1878,7 @@ Focus on index trend, liquidity, and sector rotation to shape the next-session t
             sections.append(f"### {numerals[section_number - 1]}、{title}\n{hint}")
             section_number += 1
 
-        if self.profile.has_sector_rankings:
+        if sectors_on:
             add_section("板块主线", "（仅分析已提供的行业板块与概念题材榜单，不扩展未提供的数据）")
         if self.profile.has_market_stats:
             add_section("资金与情绪", "（仅解读已提供的成交额、涨跌停结构、市场宽度和风险偏好数据）")
@@ -1865,6 +1896,7 @@ Focus on index trend, liquidity, and sector rotation to shape the next-session t
         # Korean reuses the English structural template but the model is told to
         # write the entire shell, headings, guidance and conclusion in Korean.
         shell_language_label = "Korean (한국어)" if self._get_output_language() == "ko" else "English"
+        sectors_on = self._sector_rankings_in_prompt(overview)
 
         # 指数行情信息（简洁格式，不用emoji）
         indices_text = ""
@@ -1903,7 +1935,7 @@ Focus on index trend, liquidity, and sector rotation to shape the next-session t
 - Limit-up: {overview.limit_up_count} | Limit-down: {overview.limit_down_count}
 - Turnover: {overview.total_amount:.0f} ({self._get_turnover_unit_label()})"""
 
-            if self.profile.has_sector_rankings:
+            if sectors_on:
                 sector_block = f"""## Sector / Theme Performance
 Industry leading: {top_sectors_text if top_sectors_text else "N/A"}
 Industry lagging: {bottom_sectors_text if bottom_sectors_text else "N/A"}
@@ -1915,7 +1947,7 @@ Concept lagging: {bottom_concepts_text if bottom_concepts_text else "N/A"}"""
                 data_limit_lines.append(
                     "- Market breadth, aggregate turnover, participation, and fund-flow signals are not available for this market."
                 )
-            if not self.profile.has_sector_rankings:
+            if not sectors_on:
                 data_limit_lines.append("- Sector/theme ranking data is not available for this market.")
             if data_limit_lines:
                 data_limits_block = "## Data Limits\n" + "\n".join(data_limit_lines)
@@ -1926,7 +1958,7 @@ Concept lagging: {bottom_concepts_text if bottom_concepts_text else "N/A"}"""
 - 涨停: {overview.limit_up_count} 家 | 跌停: {overview.limit_down_count} 家
 - 两市成交额: {overview.total_amount:.0f} 亿元"""
 
-            if self.profile.has_sector_rankings:
+            if sectors_on:
                 sector_block = f"""## 板块表现
 行业领涨: {top_sectors_text if top_sectors_text else "暂无数据"}
 行业领跌: {bottom_sectors_text if bottom_sectors_text else "暂无数据"}
@@ -1936,7 +1968,7 @@ Concept lagging: {bottom_concepts_text if bottom_concepts_text else "N/A"}"""
             data_limit_lines = self._tw_index_coverage_lines(overview)
             if not self.profile.has_market_stats:
                 data_limit_lines.append("- 该市场暂无涨跌家数、涨跌停、成交额汇总、参与度或资金流信号。")
-            if not self.profile.has_sector_rankings:
+            if not sectors_on:
                 data_limit_lines.append("- 该市场暂无行业板块/概念题材涨跌榜。")
             if data_limit_lines:
                 data_limits_block = "## 数据边界\n" + "\n".join(data_limit_lines)
@@ -1978,14 +2010,14 @@ Concept lagging: {bottom_concepts_text if bottom_concepts_text else "N/A"}"""
                 else "2-3句话概括指数表现、新闻线索和整体风险状态，不要补写未提供的市场宽度或资金流数据"
             )
 
-        output_template_sections = self._build_output_template_sections(review_language)
+        output_template_sections = self._build_output_template_sections(review_language, sectors_on)
         zh_market_scope_name = self._get_market_scope_name("zh")
         zh_report_title = f"{overview.date} 大盘复盘"
         if self.region in ("jp", "kr", "tw"):
             zh_report_title = f"{overview.date} {zh_market_scope_name}大盘复盘"
         workflow_hint = (
             "报告要像交易员盘后工作台：先给结论，再按数据表、主线、催化、计划展开"
-            if self.profile.has_market_stats or self.profile.has_sector_rankings
+            if self.profile.has_market_stats or sectors_on
             else "报告要像交易员盘后工作台：先给结论，再按指数、新闻催化和计划展开"
         )
 
@@ -2259,7 +2291,7 @@ Market conditions can change quickly. The data above is for reference only and d
 ### 三、板块主线
 {sector_block or "- 暂无板块涨跌榜数据。"}
 """
-            if self.profile.has_sector_rankings
+            if self._sector_rankings_in_prompt(overview)
             else ""
         )
         funds_section = (

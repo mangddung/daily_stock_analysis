@@ -23,7 +23,7 @@ class MarketProfile:
     prompt_index_hint: str
     # 市场概况是否包含涨跌家数、涨停跌停（A 股有，美股无）
     has_market_stats: bool
-    # 市场概况是否包含板块涨跌（A 股有，美股暂无）
+    # 市场概况是否包含板块涨跌（A 股走数据源；其他市场走行业 ETF/官方行业指数，见 data_provider/sector_rankings.py）
     has_sector_rankings: bool
 
 
@@ -50,7 +50,7 @@ US_PROFILE = MarketProfile(
     ],
     prompt_index_hint="分析标普500、纳斯达克、道指等各指数走势特点",
     has_market_stats=False,
-    has_sector_rankings=False,
+    has_sector_rankings=True,
 )
 
 HK_PROFILE = MarketProfile(
@@ -63,7 +63,7 @@ HK_PROFILE = MarketProfile(
     ],
     prompt_index_hint="分析恒生指数、恒生科技指数、国企指数等各指数走势特点",
     has_market_stats=False,
-    has_sector_rankings=False,
+    has_sector_rankings=True,
 )
 
 JP_PROFILE = MarketProfile(
@@ -76,7 +76,7 @@ JP_PROFILE = MarketProfile(
     ],
     prompt_index_hint="分析日经225、东证指数等日本主要指数走势特点",
     has_market_stats=False,
-    has_sector_rankings=False,
+    has_sector_rankings=True,
 )
 
 KR_PROFILE = MarketProfile(
@@ -89,7 +89,7 @@ KR_PROFILE = MarketProfile(
     ],
     prompt_index_hint="分析 KOSPI、KOSDAQ 等韩国主要指数走势特点",
     has_market_stats=False,
-    has_sector_rankings=False,
+    has_sector_rankings=True,
 )
 
 
@@ -103,7 +103,7 @@ TW_PROFILE = MarketProfile(
     ],
     prompt_index_hint="分析台湾加权指数、柜买指数走势；缺失指数时说明覆盖范围，不推断未提供的行情",
     has_market_stats=False,
-    has_sector_rankings=False,
+    has_sector_rankings=True,
 )
 
 
