@@ -25,12 +25,18 @@ English | [한국어](docs/README_KO.md) | [简体中文](docs/README_CHS.md) | 
 | Area | Change |
 |------|--------|
 | Korean UI | Web UI, backend messages, Agent chat and market review reports available in Korean (zh / en / ko toggle) |
+| Market dashboard | Home page with market clocks and session countdowns, major indices per market, FX rates and the watchlist with pre/after-hours prices; analysis moves to its own tab |
+| Disclosures | Optional (`DISCLOSURE_ENABLED`): recent official filings (OpenDART, SEC EDGAR, cninfo) summarized into the analysis, and upcoming disclosure dates (KIND, JPX, Eastmoney, HKEXnews, Yahoo) shown in reports |
+| KR/JP stocks | Autocomplete covers all KOSPI/KOSDAQ and TSE listings with official local names, plus official English names in the English UI |
+| Price ticks | KR/JP entry, stop and target levels in whole won/yen on valid exchange ticks |
 | Task control | Cancel queued tasks, or running stock analysis at its next checkpoint |
-| Rate-limit alerts | App-wide badge for LLM, market data and news providers that recently hit a rate limit or quota |
+| Rate-limit alerts | App-wide badge for LLM, market data and news providers that recently hit a rate limit or quota, and for failing disclosure sources |
 | Agent chat | Pick the target stock explicitly, and run each selected strategy as its own specialist |
 | Data Center | Configure missing providers inline and see each provider's last successful call |
-| Market review | One history row per reviewed market, and the server's default markets shown on the home page |
+| Market review | One history row per reviewed market, the server's default markets shown on the home page, sector rankings for US/HK/JP/KR/TW, and sector names in the report language |
+| Token usage | Recent LLM calls grouped by chat turn, and one model's usage no longer split across call paths |
 | Settings | Search settings by name, key or description across all categories |
+| Safer defaults | Desktop auto-update and remote stock-index refresh are off by default, so nothing is pulled from the upstream repository unasked |
 | Dev stack | `docker/docker-compose.dev.yml` with backend auto-reload and Vite HMR |
 
 ## 🖥️ Product Preview
