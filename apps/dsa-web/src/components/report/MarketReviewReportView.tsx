@@ -249,7 +249,19 @@ const formatMarketAmount = (value: unknown, unit?: string): string => {
 
 const formatMarketPercent = (value: unknown): string => {
   const formattedValue = formatMarketNumber(value);
-  return formattedValue === '-' ? '-' : `${formattedValue}%`;
+  if (formattedValue === '-') {
+    return '-';
+  }
+  return `${(coerceFiniteNumber(value) ?? 0) > 0 ? '+' : ''}${formattedValue}%`;
+};
+
+// Same up/down palette as the stock report header (--home-price-up/down).
+const getMarketChangeStyle = (value: unknown): React.CSSProperties | undefined => {
+  const numericValue = coerceFiniteNumber(value);
+  if (numericValue === null || numericValue === 0) {
+    return undefined;
+  }
+  return { color: numericValue > 0 ? 'var(--home-price-up)' : 'var(--home-price-down)' };
 };
 
 const formatMarketHighLow = (high: unknown, low: unknown): string => {
@@ -646,7 +658,9 @@ export const MarketReviewReportView: React.FC<MarketReviewReportViewProps> = ({
                           <tr key={index.code || index.name}>
                             <td className="px-2 py-2 font-medium text-foreground">{index.name}</td>
                             <td className="px-2 py-2 text-secondary-text">{formatMarketNumber(index.current)}</td>
-                            <td className="px-2 py-2 text-secondary-text">{formatMarketPercent(index.changePct)}</td>
+                            <td className="px-2 py-2 text-secondary-text" style={getMarketChangeStyle(index.changePct)}>
+                              {formatMarketPercent(index.changePct)}
+                            </td>
                             <td className="px-2 py-2 text-secondary-text">{formatMarketHighLow(index.high, index.low)}</td>
                           </tr>
                         ))}
@@ -688,7 +702,7 @@ export const MarketReviewReportView: React.FC<MarketReviewReportViewProps> = ({
                           {rows.slice(0, 5).map((item, index) => (
                             <div key={`${item.name}-${index}`} className="flex items-center justify-between gap-3 text-sm">
                               <span className="min-w-0 truncate text-foreground">{item.name}</span>
-                              <span className="shrink-0 font-mono text-secondary-text">
+                              <span className="shrink-0 font-mono text-secondary-text" style={getMarketChangeStyle(item.changePct)}>
                                 {formatRankingChange(item.changePct)}
                               </span>
                             </div>

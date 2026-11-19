@@ -717,8 +717,8 @@ describe('RunFlowGraph', () => {
     expect(nodeStyleFor('run-flow-node-provider_realtime_tushare_1').width).toBe('244px');
     expect(nodeStyleFor('run-flow-node-provider_realtime_tushare_1').height).toBe('96px');
     const toggle = screen.getByTestId('run-flow-node-topology_data_realtime_quote-toggle');
-    expect(toggle).toHaveClass('h-[18px]', 'gap-0.5', 'px-1', 'text-[9px]', 'leading-none');
-    expect(toggle.querySelector('svg')).toHaveClass('h-2', 'w-2');
+    expect(toggle).toHaveClass('h-6', 'gap-1', 'px-2', 'text-xs', 'leading-none');
+    expect(toggle.querySelector('svg')).toHaveClass('h-3', 'w-3');
   });
 
   it('keeps multiple expanded provider groups as non-interleaving layout blocks', () => {

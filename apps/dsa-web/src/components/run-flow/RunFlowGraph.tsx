@@ -813,12 +813,12 @@ export const RunFlowGraph: React.FC<RunFlowGraphProps> = ({
                       event.stopPropagation();
                       onToggleExpanded?.(node.id);
                     }}
-                    className="absolute bottom-2 right-2 z-40 inline-flex h-[18px] items-center gap-0.5 rounded-md border border-subtle bg-base/80 px-1 text-[9px] font-medium leading-none text-secondary-text shadow-sm transition-colors hover:border-primary/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-cyan/15"
+                    className="absolute bottom-2 right-2 z-40 inline-flex h-6 items-center gap-1 rounded-md border border-subtle bg-base/80 px-2 text-xs font-medium leading-none text-secondary-text shadow-sm transition-colors hover:border-primary/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-cyan/15"
                   >
                     {expanded ? (
-                      <ChevronDown className="h-2 w-2" aria-hidden="true" />
+                      <ChevronDown className="h-3 w-3" aria-hidden="true" />
                     ) : (
-                      <ChevronRight className="h-2 w-2" aria-hidden="true" />
+                      <ChevronRight className="h-3 w-3" aria-hidden="true" />
                     )}
                     {expanded ? t('runFlow.graph.collapse') : t('runFlow.graph.expand')}
                   </button>

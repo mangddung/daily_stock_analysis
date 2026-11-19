@@ -164,8 +164,8 @@ describe('MarketReviewReportView', () => {
     expect(screen.getAllByText('概念板块')).toHaveLength(2);
     expect(screen.getByText('半导体')).toBeInTheDocument();
     expect(screen.getByText('机器人概念')).toBeInTheDocument();
-    expect(screen.getByText('+4.20%')).toBeInTheDocument();
-    expect(screen.getByText('-2.05%')).toBeInTheDocument();
+    expect(screen.getByText('+4.20%')).toHaveStyle({ color: 'var(--home-price-up)' });
+    expect(screen.getByText('-2.05%')).toHaveStyle({ color: 'var(--home-price-down)' });
   });
 
   it('localizes structured market data labels for Chinese reports', () => {
@@ -245,7 +245,7 @@ describe('MarketReviewReportView', () => {
 
     expect(screen.getByText('36822.50 bn')).toBeInTheDocument();
     expect(screen.getByText('4112.45')).toBeInTheDocument();
-    expect(screen.getByText('0.44%')).toBeInTheDocument();
+    expect(screen.getByText('+0.44%')).toHaveStyle({ color: 'var(--home-price-up)' });
     expect(screen.getByText('4143.31 / 4087.54')).toBeInTheDocument();
     expect(screen.queryByText(/36822\.496/)).not.toBeInTheDocument();
     expect(screen.queryByText(/0\.440797/)).not.toBeInTheDocument();
@@ -288,7 +288,7 @@ describe('MarketReviewReportView', () => {
     expect(screen.getByText('4327')).toBeInTheDocument();
     expect(screen.getByText('36822.50 bn')).toBeInTheDocument();
     expect(screen.getByText('4112.45')).toBeInTheDocument();
-    expect(screen.getByText('0.44%')).toBeInTheDocument();
+    expect(screen.getByText('+0.44%')).toBeInTheDocument();
     expect(screen.queryByText('0.00 / 0.00')).not.toBeInTheDocument();
     expect(screen.queryByText(/0\.440797/)).not.toBeInTheDocument();
   });

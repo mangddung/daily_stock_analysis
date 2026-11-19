@@ -1129,11 +1129,15 @@ a {
   color: inherit;
 }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
+/* In the base layer so text-size and font-weight utilities on controls win; unlayered,
+   this `font: inherit` overrode every button/input size class (all rendered at 16px). */
+@layer base {
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
 }
 
 .terminal-card {

@@ -319,7 +319,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
           </div>
         </div>
       ) : (
-        <div id={contentId} className="max-h-64 overflow-y-auto border-t border-subtle p-2">
+        <div id={contentId} className="max-h-[min(24rem,45vh)] overflow-y-auto border-t border-subtle p-2">
           <div className="space-y-2">
             {activeTasks.map((task) => (
               <TaskItem key={task.taskId} task={task} onOpenRunFlow={onOpenRunFlow} />
