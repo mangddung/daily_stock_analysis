@@ -5,7 +5,7 @@ import type {
   ReportSummary as ReportSummaryType,
 } from '../../types/analysis';
 import { Badge, Button, Card, ScoreGauge } from '../common';
-import { formatDateTime } from '../../utils/format';
+import { formatDateTime, formatStockPrice } from '../../utils/format';
 import { getMarketPhaseSummaryLabel, getPartialBarLabel } from '../../utils/marketPhase';
 import { getReportText } from '../../utils/reportLanguage';
 import { useUiLanguage } from '../../contexts/UiLanguageContext';
@@ -260,7 +260,7 @@ export const ReportOverview: React.FC<ReportOverviewProps> = ({
                   {meta.currentPrice != null && (
                     <div className="flex items-baseline gap-2">
                       <span className="text-xl font-bold font-mono" style={getPriceChangeStyle(meta.changePct)}>
-                        {meta.currentPrice.toFixed(2)}
+                        {formatStockPrice(meta.currentPrice, meta.stockCode)}
                       </span>
                       <span className="text-sm font-semibold font-mono" style={getPriceChangeStyle(meta.changePct)}>
                         {formatChangePct(meta.changePct)}

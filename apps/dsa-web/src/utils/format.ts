@@ -12,6 +12,15 @@ export const formatDateTime = (value?: string | null): string => {
   }).format(date);
 };
 
+// KRX / TSE quote in whole won / yen (same rule as the analysis prompt's sniper levels).
+const WHOLE_UNIT_PRICE_CODE = /^\d{4,6}\.(KS|KQ|T)$/i;
+
+/** Stock price with thousands separators: no decimals for KR/JP codes, two decimals otherwise. */
+export const formatStockPrice = (price: number, stockCode?: string | null): string => {
+  const digits = stockCode && WHOLE_UNIT_PRICE_CODE.test(stockCode.trim()) ? 0 : 2;
+  return price.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+};
+
 export const formatDate = (value?: string): string => {
   if (!value) return '—';
   const date = new Date(value);

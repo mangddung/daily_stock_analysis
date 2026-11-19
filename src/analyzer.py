@@ -336,6 +336,10 @@ class _AllModelsFailedError(Exception):
 
 
 from src.utils.data_processing import normalize_report_signal_attribution
+from src.utils.price_ticks import price_market, price_precision_rule, round_market_price
+
+# Price fields of context['today'] shown in the analysis prompt (rounded for KR/JP).
+_PROMPT_PRICE_KEYS = frozenset({"open", "high", "low", "close", "ma5", "ma10", "ma20", "ma60"})
 
 
 def check_content_integrity(
@@ -4384,6 +4388,14 @@ Output strictly in the following JSON format. This is a complete Decision Dashbo
             stock_name = f'Stock {code}'
 
         today = context.get('today', {})
+        # KR/JP quote in whole units: round prompt prices so the LLM does not copy raw
+        # floats (e.g. MA5 1152200.0) into off-tick sniper levels.
+        price_mkt = price_market(code)
+        if price_mkt and isinstance(today, dict):
+            today = {
+                key: round_market_price(value, price_mkt) if key in _PROMPT_PRICE_KEYS else value
+                for key, value in today.items()
+            }
         unknown_text = get_unknown_text(report_language)
         no_data_text = get_no_data_text(report_language)
         quote_section_title, close_price_label = _phase_aware_quote_labels(context, report_language)
@@ -4508,7 +4520,7 @@ Output strictly in the following JSON format. This is a complete Decision Dashbo
 ### Realtime Quote Details
 | Indicator | Value | Interpretation |
 |------|------|------|
-| Current Price | {rt.get('price', 'N/A')} | |
+| Current Price | {round_market_price(rt.get('price', 'N/A'), price_mkt)} | |
 | **Volume Ratio** | **{rt.get('volume_ratio', 'N/A')}** | {rt.get('volume_ratio_desc', '')} |
 | **Turnover Rate** | **{rt.get('turnover_rate', 'N/A')}%** | |
 | PE (TTM/dynamic) | {rt.get('pe_ratio', 'N/A')} | |
@@ -4523,7 +4535,7 @@ Output strictly in the following JSON format. This is a complete Decision Dashbo
 ### 实时行情增强数据
 | 指标 | 数值 | 解读 |
 |------|------|------|
-| 当前价格 | {rt.get('price', 'N/A')} 元 | |
+| 当前价格 | {round_market_price(rt.get('price', 'N/A'), price_mkt)} 元 | |
 | **量比** | **{rt.get('volume_ratio', 'N/A')}** | {rt.get('volume_ratio_desc', '')} |
 | **换手率** | **{rt.get('turnover_rate', 'N/A')}%** | |
 | 市盈率(动态) | {rt.get('pe_ratio', 'N/A')} | |
@@ -5078,7 +5090,7 @@ If the stock name shown above is "Stock {code}" or incorrect, **state the correc
 - **Stock name**: must output the correct company name (e.g. "Apple" rather than "Stock AAPL")
 - **Core conclusion**: say clearly in one sentence whether to buy, sell or wait
 - **Position-specific advice**: what to do without a position vs. what to do as a holder
-- **Concrete sniper levels**: buy price, stop-loss price, target price (to two decimals)
+- **Concrete sniper levels**: buy price, stop-loss price, target price ({price_precision_rule(price_mkt, True)})
 - **Checklist**: mark each item with ✅/⚠️/❌
 - **News time compliance**: `latest_news`, `risk_alerts` and `positive_catalysts` must not contain information older than the last {news_window_days} days or with an unknown date
 - **Technical consistency**: never use mutually exclusive conclusions such as "bearish alignment" and "bullish alignment" as valid evidence at the same time; if fundamentals/events conflict with technicals, state explicitly "event-led, technicals not yet confirmed" or "fundamentals lean positive, but technicals are not yet confirmed"
@@ -5091,7 +5103,7 @@ Output the complete Decision Dashboard in JSON format."""
 - **股票名称**：必须输出正确的中文全称（如"贵州茅台"而非"股票600519"）
 - **核心结论**：一句话说清该买/该卖/该等
 - **持仓分类建议**：空仓者怎么做 vs 持仓者怎么做
-- **具体狙击点位**：买入价、止损价、目标价（精确到分）
+- **具体狙击点位**：买入价、止损价、目标价（{price_precision_rule(price_mkt, False)}）
 - **检查清单**：每项用 ✅/⚠️/❌ 标记
 - **消息面时间合规**：`latest_news`、`risk_alerts`、`positive_catalysts` 不得包含超出近{news_window_days}日或时间未知的信息
 - **技术面一致性**：严禁把“空头排列”和“多头排列”等互斥结论同时当作有效依据；若基本面/事件面与技术面冲突，必须明确写“事件先行、技术待确认”或“基本面偏多，但技术面尚未确认”
