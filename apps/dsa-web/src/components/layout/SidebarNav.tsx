@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Activity, BarChart3, Bell, BriefcaseBusiness, Database, FileText, Gauge, Home, LogOut, MessageSquareQuote, Search, Settings2 } from 'lucide-react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAgentChatStore } from '../../stores/agentChatStore';
 import { useUiLanguage } from '../../contexts/UiLanguageContext';
@@ -70,9 +70,12 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed = false, onNav
 
   return (
     <div className={cn('flex min-h-0 w-full flex-col', isRail ? '' : 'h-full')}>
-      <div
+      <Link
+        to="/"
+        onClick={onNavigate}
+        aria-label={`DSA · ${t('layout.nav.home')}`}
         className={cn(
-          'flex shrink-0 items-center',
+          'flex shrink-0 items-center rounded-2xl transition-opacity hover:opacity-85',
           isRail ? 'mb-5 justify-center gap-2 pt-1' : 'mb-4 gap-2 px-1',
           collapsed || isRail ? 'justify-center' : ''
         )}
@@ -88,7 +91,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed = false, onNav
         {!collapsed ? (
           <p className={cn('min-w-0 truncate font-semibold text-foreground', isRail ? 'text-[0.95rem] leading-none' : 'text-sm')}>DSA</p>
         ) : null}
-      </div>
+      </Link>
 
       <nav className={cn('flex flex-col gap-1.5', isRail ? 'min-h-0 overflow-y-auto' : 'flex-1')} aria-label={t('layout.mainNav')}>
         {NAV_ITEMS.map(({ key, labelKey, to, icon: Icon, exact, badge }) => {

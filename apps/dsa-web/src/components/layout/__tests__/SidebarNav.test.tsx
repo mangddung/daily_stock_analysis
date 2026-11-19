@@ -32,7 +32,14 @@ describe('SidebarNav', () => {
 
     expect(screen.getByRole('link', { name: '选股' })).toHaveAttribute('href', '/screening');
     const hrefs = screen.getAllByRole('link').map((link) => link.getAttribute('href'));
-    expect(hrefs.slice(0, 6)).toEqual(['/', '/analysis', '/chat', '/screening', '/portfolio', '/decision-signals']);
+    // First link is the DSA brand (home), then the nav items.
+    expect(hrefs.slice(0, 7)).toEqual(['/', '/', '/analysis', '/chat', '/screening', '/portfolio', '/decision-signals']);
+  });
+
+  it('links the DSA brand to home', () => {
+    render(<MemoryRouter initialEntries={['/analysis']}><SidebarNav /></MemoryRouter>);
+
+    expect(screen.getByRole('link', { name: 'DSA · 首页' })).toHaveAttribute('href', '/');
   });
 
   it('shows the shared completion badge only when chat completion is pending', () => {
