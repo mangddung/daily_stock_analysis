@@ -42,7 +42,7 @@ services:
       - "127.0.0.1:15300:8000"
 
   frontend:
-    image: node:20.19.5-bookworm
+    image: node:24.22.3-bookworm
     working_dir: /app
     environment:
       - VITE_API_PROXY_TARGET=http://backend:8000
