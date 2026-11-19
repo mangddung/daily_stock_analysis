@@ -3,6 +3,7 @@ import type { AnalysisResult, AnalysisReport } from '../../types/analysis';
 import { ReportOverview } from './ReportOverview';
 import { ReportStrategy } from './ReportStrategy';
 import { ReportNews } from './ReportNews';
+import { ReportDisclosures } from './ReportDisclosures';
 import { ReportDetails } from './ReportDetails';
 import { ReportDiagnostics } from './ReportDiagnostics';
 import { AnalysisContextSummary } from './AnalysisContextSummary';
@@ -71,6 +72,9 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
 
       {/* 策略点位区 */}
       <ReportStrategy strategy={strategy} />
+
+      {/* 官方公告：预定披露日 + 近期公告（原样展示） */}
+      <ReportDisclosures details={details} />
 
       {/* 资讯区 */}
       <ReportNews recordId={recordId} limit={8} />

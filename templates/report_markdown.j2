@@ -33,6 +33,20 @@
 {% if e.empty_news_disclosure %}
 {{ e.empty_news_disclosure }}
 {% endif %}
+{% if result.upcoming_disclosures %}
+**📅 {{ labels.upcoming_disclosures_label }}**:
+{% for d in result.upcoming_disclosures %}
+- {{ d.date }} {{ d.title }} ({{ d.source }})
+{% endfor %}
+
+{% endif %}
+{% if result.disclosures %}
+**📑 {{ labels.recent_disclosures_label }}**:
+{% for d in result.disclosures %}
+- {{ d.date }} {{ d.title }}{% if d.summary %}: {{ d.summary }}{% endif %}
+{% endfor %}
+
+{% endif %}
 {% if intel %}
 ### 📰 {{ labels.info_heading }}
 

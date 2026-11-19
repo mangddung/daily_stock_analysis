@@ -150,6 +150,21 @@ class TestAstrBotFieldsRegistered(unittest.TestCase):
             self.assertIn(key, field_keys, f"{key} missing from schema response")
 
 
+class TestDisclosureFieldsRegistered(unittest.TestCase):
+    def test_disclosure_settings_have_their_own_category(self):
+        schema = build_schema_response()
+        categories = {
+            category["category"]: [field["key"] for field in category["fields"]]
+            for category in schema["categories"]
+        }
+
+        self.assertEqual(categories["disclosure"],
+                         ["DISCLOSURE_ENABLED", "DART_API_KEY", "SEC_USER_AGENT", "DISCLOSURE_BODY_CHARS"])
+        toggle = get_field_definition("DISCLOSURE_ENABLED")
+        self.assertEqual((toggle["ui_control"], toggle["default_value"]), ("switch", "false"))
+        self.assertTrue(get_field_definition("DART_API_KEY")["is_sensitive"])
+
+
 class TestScreeningFieldsRegistered(unittest.TestCase):
     def test_builtin_screening_toggle_is_registered(self):
         field = get_field_definition("SCREENING_ENABLED")

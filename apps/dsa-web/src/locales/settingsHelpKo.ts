@@ -319,6 +319,30 @@ export const settingsHelpKoKR: SettingsHelpMap = {
     usage: 'https://www.alphavantage.co/support/#api-key 에서 발급받으세요. 비워 두면 사용하지 않습니다.',
     impact: ['미국 주식 일봉 데이터 대체 순서에 영향을 줍니다.'],
   },
+  'settings.disclosure.DISCLOSURE_ENABLED': {
+    title: '공시 기능 사용',
+    summary: '최근 공식 공시와 공시 예정일을 분석에 반영하고, 보고서의 "공시" 카드에 그대로 표시합니다.',
+    usage: '켜면 다음 분석부터 적용됩니다. 공시 예정일은 키가 필요 없고, 최근 공시는 한국은 OpenDART 키, 미국은 SEC User-Agent가 필요합니다. A주는 설정이 필요 없습니다.',
+    impact: ['이벤트성 공시는 건마다 LLM 요약을 한 번 더 호출합니다(종목당 최대 5건, 캐시됨). 사용량에는 "공시 요약"으로 집계됩니다.', '공시 소스가 실패하면 런타임 알림에 "공시" 항목이 표시됩니다.'],
+  },
+  'settings.disclosure.DART_API_KEY': {
+    title: 'OpenDART API Key',
+    summary: '한국 종목(.KS/.KQ) 최근 공시 출처입니다.',
+    usage: 'https://opendart.fss.or.kr 에서 무료로 발급받으세요. 비워 두면 한국 최근 공시는 건너뜁니다.',
+    impact: ['한국 최근 공시에만 영향을 줍니다. KIND IR 일정과 법정 제출기한은 그대로 표시됩니다.'],
+  },
+  'settings.disclosure.SEC_USER_AGENT': {
+    title: 'SEC EDGAR User-Agent',
+    summary: '미국 최근 공시(SEC EDGAR) 요청 헤더입니다.',
+    usage: 'SEC 공정 접근 정책상 연락처가 필요합니다(예: "AppName contact@example.com"). 비워 두면 미국 최근 공시는 건너뜁니다.',
+    impact: ['미국 최근 공시에만 영향을 줍니다. Yahoo 실적 발표일은 그대로 표시됩니다.'],
+  },
+  'settings.disclosure.DISCLOSURE_BODY_CHARS': {
+    title: '공시 본문 읽기 한도',
+    summary: '이벤트성 공시 1건당 LLM 요약에 보내는 본문 글자 수입니다. 기본값은 30000입니다.',
+    usage: 'SEC 8-K/6-K의 EX-99 첨부(보도자료, CFO 코멘트)도 포함하며, 실제 실적 숫자는 보통 이 첨부에 있습니다. 2000–200000 범위로 설정할 수 있습니다.',
+    impact: ['높이면 긴 공시 뒷부분의 표와 조건까지 반영되지만 요약 토큰이 늘어납니다(대략 3글자당 1토큰). 이미 캐시된 요약은 값을 바꿔도 다시 만들지 않습니다.'],
+  },
   'settings.data_source.LONGBRIDGE_OAUTH_CLIENT_ID': {
     title: 'Longbridge OAuth Client ID',
     summary: 'Longbridge OpenAPI OAuth 2.0 client_id(권장 방식)를 설정합니다.',

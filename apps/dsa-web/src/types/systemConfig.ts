@@ -1,6 +1,7 @@
 export type SystemConfigCategory =
   | 'base'
   | 'data_source'
+  | 'disclosure'
   | 'ai_model'
   | 'notification'
   | 'system'

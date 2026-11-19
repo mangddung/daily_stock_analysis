@@ -1104,6 +1104,12 @@ class Config:
     social_sentiment_api_key: Optional[str] = None
     social_sentiment_api_url: str = "https://api.adanos.org"
 
+    # === Regulatory filings (OpenDART / SEC EDGAR / cninfo) ===
+    disclosure_enabled: bool = False
+    dart_api_key: Optional[str] = None
+    sec_user_agent: Optional[str] = None
+    disclosure_body_chars: int = 30000  # filing text sent to the summarizer per filing
+
     # === 新闻与分析筛选配置 ===
     news_max_age_days: int = 3   # 新闻最大时效（天）
     news_strategy_profile: str = "short"  # 新闻窗口策略档位：ultra_short/short/medium/long
@@ -2022,6 +2028,13 @@ class Config:
             ),
             social_sentiment_api_key=os.getenv('SOCIAL_SENTIMENT_API_KEY') or None,
             social_sentiment_api_url=os.getenv('SOCIAL_SENTIMENT_API_URL', 'https://api.adanos.org').rstrip('/'),
+            disclosure_enabled=parse_env_bool(os.getenv('DISCLOSURE_ENABLED'), False),
+            dart_api_key=os.getenv('DART_API_KEY') or None,
+            sec_user_agent=os.getenv('SEC_USER_AGENT') or None,
+            disclosure_body_chars=parse_env_int(
+                os.getenv('DISCLOSURE_BODY_CHARS'), 30000, field_name='DISCLOSURE_BODY_CHARS',
+                minimum=2000, maximum=200000,
+            ),
             news_max_age_days=parse_env_int(os.getenv('NEWS_MAX_AGE_DAYS'), 3, field_name='NEWS_MAX_AGE_DAYS', minimum=1),
             news_strategy_profile=cls._parse_news_strategy_profile(
                 os.getenv('NEWS_STRATEGY_PROFILE', 'short')

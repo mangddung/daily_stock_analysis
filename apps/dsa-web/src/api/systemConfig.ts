@@ -180,7 +180,7 @@ function toSnakeAgentBackendPayload(
 }
 
 export interface RuntimeAlert {
-  kind: 'llm' | 'market' | 'news';
+  kind: 'llm' | 'market' | 'news' | 'disclosure';
   source: string;
   lastAt: string;
   count: number;

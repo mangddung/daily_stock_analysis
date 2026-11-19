@@ -544,6 +544,7 @@ _DATA_TYPE_LABELS = {
     "technical": "技术指标",
     "news": "新闻舆情",
     "news_search": "新闻舆情",
+    "disclosure": "官方公告",
     "fundamental": "基本面",
     "fundamentals": "基本面",
     "belong_boards": "所属板块",
@@ -903,8 +904,13 @@ def note_rate_limit_outcome(
     success: bool,
     error_type: Any = None,
     error_message: Any = None,
+    any_failure: bool = False,
 ) -> None:
-    """Raise or clear the alert for one (kind, source). kind: llm | market | news."""
+    """Raise or clear the alert for one (kind, source). kind: llm | market | news | disclosure.
+
+    ``any_failure`` alerts on every failure, not only rate limits, for keyless scraped
+    sources whose breakage (layout change, HTTP error) would otherwise go unnoticed.
+    """
     if not source:
         return
     key = (kind, str(source))
@@ -912,7 +918,7 @@ def note_rate_limit_outcome(
         if success:
             _RATE_LIMITS.pop(key, None)
             return
-        if not is_rate_limit_error(error_type, error_message):
+        if not any_failure and not is_rate_limit_error(error_type, error_message):
             return
         previous = _RATE_LIMITS.get(key)
         _RATE_LIMITS[key] = {
@@ -957,11 +963,13 @@ def record_provider_run(
         _PROVIDER_LAST_SUCCESS[str(provider)] = datetime.now().astimezone().isoformat()
     if not (success and cache_hit):  # a cache hit proves nothing about the upstream limit
         note_rate_limit_outcome(
-            "news" if data_type == "news_search" else "market",
+            {"news_search": "news", "disclosure": "disclosure"}.get(data_type, "market"),
             provider,
             success=success,
             error_type=error_type,
             error_message=error_message,
+            # Keyless scraped filing sources break silently; alert on any failure.
+            any_failure=data_type == "disclosure",
         )
 
     context = get_current_diagnostic_context()

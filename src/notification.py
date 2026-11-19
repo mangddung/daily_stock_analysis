@@ -422,6 +422,22 @@ class NotificationService(
         return empty_news_disclosure(result, language)
 
     @staticmethod
+    def _disclosure_lines(result: "AnalysisResult", labels: Dict[str, str]) -> List[str]:
+        """Scheduled disclosure dates and recent filings, verbatim from the disclosure service."""
+        lines: List[str] = []
+        upcoming = getattr(result, "upcoming_disclosures", None) or []
+        recent = getattr(result, "disclosures", None) or []
+        if upcoming:
+            lines.append(f"📅 **{labels['upcoming_disclosures_label']}**:")
+            lines.extend(f"- {i.get('date')} {i.get('title')} ({i.get('source')})" for i in upcoming)
+        if recent:
+            lines.append(f"📑 **{labels['recent_disclosures_label']}**:")
+            for item in recent:
+                summary = f": {item['summary']}" if item.get("summary") else ""
+                lines.append(f"- {item.get('date')} {item.get('title')}{summary}")
+        return lines
+
+    @staticmethod
     def _append_data_sources_line(
         lines: List[str],
         result: AnalysisResult,
@@ -1067,6 +1083,9 @@ class NotificationService(
                         report_lines.append(news_disclosure)
                     report_lines.extend(news_lines)
                     report_lines.append("")
+                disclosure_lines = self._disclosure_lines(result, labels)
+                if disclosure_lines:
+                    report_lines.extend(disclosure_lines + [""])
 
                 # 综合分析
                 if result.analysis_summary:
@@ -1601,6 +1620,9 @@ class NotificationService(
                         if result.news_summary:
                             report_lines.append(f"{result.news_summary}")
                         report_lines.append("")
+                    disclosure_lines = self._disclosure_lines(result, labels)
+                    if disclosure_lines:
+                        report_lines.extend(disclosure_lines + [""])
 
                 if self._append_data_sources_line(report_lines, result, labels):
                     report_lines.append("")
@@ -2011,6 +2033,13 @@ class NotificationService(
             lines.append("")
             lines.append(news_disclosure)
             info_added = True
+        disclosure_lines = self._disclosure_lines(result, labels)
+        if disclosure_lines:
+            if not info_added:
+                lines.append(f"### 📰 {labels['info_heading']}")
+                lines.append("")
+                info_added = True
+            lines.extend(disclosure_lines)
         if intel:
             if intel.get('earnings_outlook'):
                 if not info_added:

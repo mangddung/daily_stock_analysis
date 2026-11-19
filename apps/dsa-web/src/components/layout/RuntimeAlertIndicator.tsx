@@ -14,6 +14,7 @@ const KIND_LABEL_KEYS: Record<string, UiTextKey> = {
   llm: 'layout.rateLimitKindLlm',
   market: 'layout.rateLimitKindMarket',
   news: 'layout.rateLimitKindNews',
+  disclosure: 'layout.rateLimitKindDisclosure',
 };
 
 type RuntimeAlertIndicatorProps = {
@@ -28,7 +29,7 @@ const PANEL_PLACEMENT = {
   drawer: 'left-0 bottom-full mb-2',
 } as const;
 
-/** Shell-wide badge for upstream rate limits (LLM / market data / news); hidden when healthy. */
+/** Shell-wide badge for upstream rate limits (LLM / market data / news) and disclosure-source failures; hidden when healthy. */
 export const RuntimeAlertIndicator: React.FC<RuntimeAlertIndicatorProps> = ({ variant = 'floating', collapsed = false }) => {
   const { t } = useUiLanguage();
   const navigate = useNavigate();

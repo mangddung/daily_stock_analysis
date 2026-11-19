@@ -73,6 +73,11 @@ from src.services.daily_market_context import (
     format_daily_market_context_prompt_section,
 )
 from src.services.social_sentiment_service import SocialSentimentService
+from src.services.disclosure_service import (
+    DisclosureService,
+    format_disclosure_context,
+    format_recent_disclosures,
+)
 from src.services.intelligence_service import IntelligenceService
 from src.services.market_hotspot_service import MarketHotspotService
 from src.services.analysis_context_builder import (
@@ -141,6 +146,13 @@ def _share_image_payload(result: Any) -> Optional[Dict[str, Any]]:
         logger.debug("构建分享图片结构化数据失败，回退 Markdown: %s", exc)
         return None
     return payload if isinstance(payload, dict) and payload else None
+
+
+def _attach_disclosures(result: Any, disclosures: Optional[Dict[str, List[dict]]]) -> None:
+    """Copy fetched filings/scheduled dates onto the result so reports show them verbatim."""
+    if disclosures:
+        result.disclosures = disclosures.get("recent") or []
+        result.upcoming_disclosures = disclosures.get("upcoming") or []
 
 
 def _supports_explicit_keyword(callable_obj: Any, keyword: str) -> bool:
@@ -350,6 +362,33 @@ class StockAnalysisPipeline:
                 exc_info=True,
             )
             self.social_sentiment_service = None
+
+        # Regulatory filings (OpenDART / SEC EDGAR / cninfo), opt-in
+        self.disclosure_service: Optional[DisclosureService] = None
+        if getattr(self.config, "disclosure_enabled", False) is True:
+            self.disclosure_service = DisclosureService(
+                dart_api_key=self.config.dart_api_key,
+                sec_user_agent=self.config.sec_user_agent,
+                body_chars=getattr(self.config, "disclosure_body_chars", None),
+                report_language=normalize_report_language(getattr(self.config, "report_language", "zh")),
+                summarize=lambda prompt: self.analyzer.generate_text(
+                    # CJK summaries of periodic reports run past 2k tokens; a truncated reply comes back empty.
+                    prompt, max_tokens=4096, temperature=0.2, call_type="disclosure_summary",
+                ),
+            )
+            logger.info("Disclosure service enabled (OpenDART/SEC EDGAR/cninfo)")
+
+    def _load_disclosures(self, code: str) -> Optional[Dict[str, List[dict]]]:
+        """Recent filings and upcoming disclosure dates; fail-open (None on any error)."""
+        service = getattr(self, "disclosure_service", None)
+        if service is None:
+            return None
+        try:
+            days = max(1, int(self.config.get_effective_news_window_days() or 1))
+            return service.get_disclosures(code, days)
+        except Exception as exc:
+            logger.warning(f"[{code}] disclosure context failed: {exc}")
+            return None
 
     def _emit_progress(self, progress: int, message: str) -> None:
         """Best-effort bridge from pipeline stages to task SSE progress."""
@@ -748,6 +787,11 @@ class StockAnalysisPipeline:
                 except Exception as e:
                     logger.warning(f"{stock_name}({code}) Social sentiment fetch failed: {e}")
 
+            disclosures = None if is_index else self._load_disclosures(code)
+            disclosure_context = format_disclosure_context(disclosures) if disclosures else None
+            if disclosure_context:
+                news_context =f"{news_context}\n\n{disclosure_context}" if news_context else disclosure_context
+
             if persisted_intelligence_context:
                 news_context = (
                     f"{news_context}\n\n{persisted_intelligence_context}"
@@ -856,9 +900,12 @@ class StockAnalysisPipeline:
                     # 三路来源逐个登记，不看拼好的 news_context 整段：
                     # format_intel_report() 零命中时仍输出占位文本，整段永远非空，
                     # 拿它判定会把「搜了但一条没拿到」误判成有证据。
+                    _attach_disclosures(result, disclosures)
                     result.news_evidence_present = news_evidence_present(
                         news_result_count,
                         social_evidence_context,
+                        # Recent filings only: scheduled dates (always present for KR) are not evidence.
+                        format_recent_disclosures((disclosures or {}).get("recent") or []),
                         persisted_intelligence_context,
                     )
                 record_llm_run(
@@ -1569,6 +1616,15 @@ class StockAnalysisPipeline:
                 except Exception as e:
                     logger.warning(f"[{code}] Agent mode: social sentiment fetch failed: {e}")
 
+            disclosures = None if is_index else self._load_disclosures(code)
+            disclosure_context = format_disclosure_context(disclosures) if disclosures else None
+            if disclosure_context:
+                existing =initial_context.get("news_context")
+                initial_context["news_context"] = (
+                    f"{existing}\n\n{disclosure_context}" if existing else disclosure_context
+                )
+                logger.info(f"[{code}] Agent mode: disclosure filings injected into news_context")
+
             persisted_intelligence_context = self._load_persisted_intelligence_context(
                 code=code,
                 stock_name=stock_name,
@@ -1655,6 +1711,9 @@ class StockAnalysisPipeline:
                 trend_result=trend_result,
             )
 
+            if result is not None:
+                _attach_disclosures(result, disclosures)
+
             # 三态计数取自 Agent 实际消费的搜索工具结果：渠道不可用为 None（未执行
             # 检索），渠道可用则从 0 起步、拿到多少算多少。
             if result is not None and news_evidence is not None:
@@ -1670,6 +1729,7 @@ class StockAnalysisPipeline:
                 result.news_evidence_present = news_evidence_present(
                     result.news_result_count,
                     social_evidence_context,
+                    format_recent_disclosures((disclosures or {}).get("recent") or []),
                     persisted_intelligence_context,
                 )
             record_llm_run(

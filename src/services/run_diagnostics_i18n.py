@@ -28,6 +28,7 @@ _EXACT: Dict[str, Tuple[str, str]] = {
     "新闻舆情": ("News & sentiment", "뉴스·여론"), "基本面": ("Fundamentals", "펀더멘털"),
     "所属板块": ("Sector membership", "소속 업종"), "筹码结构": ("Chip distribution", "매물대 분포"),
     "新闻搜索": ("News search", "뉴스 검색"), "历史保存": ("History saving", "기록 저장"),
+    "官方公告": ("Disclosures", "공시"),
     # nodes
     "用户请求": ("User request", "사용자 요청"), "任务队列": ("Task queue", "작업 대기열"),
     "分析流程": ("Analysis pipeline", "분석 프로세스"), "LLM 生成": ("LLM generation", "LLM 생성"),
@@ -90,7 +91,7 @@ _EXACT: Dict[str, Tuple[str, str]] = {
 _FLOW_EXACT = {"通知": ("Notify", "알림")}
 _SUMMARY_EXACT = {"通知": ("Notification", "알림")}
 
-_LAB = "实时行情|日线数据|日线K线|技术指标|新闻舆情|基本面|所属板块|筹码结构|新闻搜索"
+_LAB = "实时行情|日线数据|日线K线|技术指标|新闻舆情|基本面|所属板块|筹码结构|新闻搜索|官方公告"
 _SUB = "(?P<L>" + _LAB + "|LLM)"
 _NEWS_TAIL = "；报告页相关资讯可能来自后续检索或历史持久化"
 _NEWS_TAIL_EN = "; report-page news may come from later searches or persisted history"

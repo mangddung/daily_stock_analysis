@@ -35,15 +35,17 @@ describe('RuntimeAlertIndicator', () => {
       alerts: [
         { kind: 'llm', source: 'anthropic/claude-haiku', lastAt: '2026-11-18T17:00:00+09:00', count: 2, message: 'RateLimitError' },
         { kind: 'news', source: 'tavily', lastAt: '2026-11-18T16:58:00+09:00', count: 1, message: null },
+        { kind: 'disclosure', source: 'KIND', lastAt: '2026-11-18T16:57:00+09:00', count: 1, message: '0 rows parsed' },
       ],
       ttlMinutes: 15,
     });
     renderIndicator();
 
     const badge = await screen.findByTestId('runtime-alert-indicator');
-    expect(badge).toHaveTextContent('2');
+    expect(badge).toHaveTextContent('3');
     fireEvent.click(badge);
     expect(screen.getByText(/anthropic\/claude-haiku/)).toBeInTheDocument();
     expect(screen.getByText(/tavily/)).toBeInTheDocument();
+    expect(screen.getByText(/KIND/)).toBeInTheDocument();
   });
 });

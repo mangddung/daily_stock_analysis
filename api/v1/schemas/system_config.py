@@ -48,7 +48,7 @@ class SystemConfigFieldSchema(BaseModel):
     key: str = Field(..., description="Configuration key name")
     title: Optional[str] = Field(None, description="Display title")
     description: Optional[str] = Field(None, description="Field description")
-    category: Literal["base", "data_source", "ai_model", "notification", "system", "agent", "backtest", "uncategorized"]
+    category: Literal["base", "data_source", "disclosure", "ai_model", "notification", "system", "agent", "backtest", "uncategorized"]
     data_type: Literal["string", "integer", "number", "boolean", "array", "json", "time"]
     ui_control: Literal["text", "password", "number", "select", "textarea", "switch", "time"]
     is_sensitive: bool
@@ -162,7 +162,7 @@ class GenerationBackendStatusResponse(BaseModel):
 class RuntimeAlertItem(BaseModel):
     """One upstream rate-limit alert seen recently by this server process."""
 
-    kind: Literal["llm", "market", "news"]
+    kind: Literal["llm", "market", "news", "disclosure"]
     source: str
     last_at: str
     count: int

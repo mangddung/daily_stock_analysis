@@ -39,6 +39,12 @@ _CATEGORY_DEFINITIONS: List[Dict[str, Any]] = [
         "display_order": 30,
     },
     {
+        "category": "disclosure",
+        "title": "Disclosures",
+        "description": "Official filings and scheduled disclosure dates added to analysis and reports.",
+        "display_order": 35,
+    },
+    {
         "category": "notification",
         "title": "Notification",
         "description": "Bot, webhook, and push channel related settings.",
@@ -974,6 +980,103 @@ _FIELD_DEFINITIONS: Dict[str, Dict[str, Any]] = {
             },
         ],
         "warning_codes": ["secret_value"],
+    },
+    "DISCLOSURE_ENABLED": {
+        "title": "Enable Disclosures",
+        "description": (
+            "Add recent official filings (OpenDART / SEC EDGAR / cninfo) and scheduled disclosure dates "
+            "(KIND / JPX / Eastmoney / HKEXnews / Yahoo) to the analysis prompt and the report. "
+            "Event filings cost one extra LLM summary call each (max 5 per stock, cached). Default: false."
+        ),
+        "category": "disclosure",
+        "data_type": "boolean",
+        "ui_control": "switch",
+        "is_sensitive": False,
+        "is_required": False,
+        "is_editable": True,
+        "default_value": "false",
+        "options": [],
+        "validation": {},
+        "display_order": 10,
+        "help_key": "settings.disclosure.DISCLOSURE_ENABLED",
+        "examples": ["DISCLOSURE_ENABLED=true"],
+        "docs": [
+            {
+                "label": "Full guide: regulatory filings",
+                "href": "https://github.com/ZhuLinsen/daily_stock_analysis/blob/main/docs/full-guide_EN.md",
+            },
+        ],
+    },
+    "DART_API_KEY": {
+        "title": "OpenDART API Key",
+        "description": "OpenDART key for recent Korean (.KS/.KQ) filings. Leave empty to skip KR filings; KR scheduled dates still work.",
+        "category": "disclosure",
+        "data_type": "string",
+        "ui_control": "password",
+        "is_sensitive": True,
+        "is_required": False,
+        "is_editable": True,
+        "default_value": None,
+        "options": [],
+        "validation": {},
+        "display_order": 20,
+        "help_key": "settings.disclosure.DART_API_KEY",
+        "examples": ["DART_API_KEY=your_opendart_key"],
+        "docs": [
+            {
+                "label": "Full guide: regulatory filings",
+                "href": "https://github.com/ZhuLinsen/daily_stock_analysis/blob/main/docs/full-guide_EN.md",
+            },
+        ],
+        "warning_codes": ["secret_value"],
+    },
+    "SEC_USER_AGENT": {
+        "title": "SEC EDGAR User-Agent",
+        "description": "User-Agent with a contact for SEC EDGAR requests (SEC fair-access policy), e.g. 'AppName contact@example.com'. Leave empty to skip US filings.",
+        "category": "disclosure",
+        "data_type": "string",
+        "ui_control": "text",
+        "is_sensitive": False,
+        "is_required": False,
+        "is_editable": True,
+        "default_value": None,
+        "options": [],
+        "validation": {},
+        "display_order": 30,
+        "help_key": "settings.disclosure.SEC_USER_AGENT",
+        "examples": ["SEC_USER_AGENT=MyApp contact@example.com"],
+        "docs": [
+            {
+                "label": "Full guide: regulatory filings",
+                "href": "https://github.com/ZhuLinsen/daily_stock_analysis/blob/main/docs/full-guide_EN.md",
+            },
+        ],
+    },
+    "DISCLOSURE_BODY_CHARS": {
+        "title": "Filing Text Budget (chars)",
+        "description": (
+            "Characters of each filing's text (incl. SEC 8-K press-release exhibits) sent to the LLM summarizer. "
+            "Higher catches details further into long filings at more summary tokens (about 1 token per 3 chars). "
+            "Default 30000."
+        ),
+        "category": "disclosure",
+        "data_type": "integer",
+        "ui_control": "number",
+        "is_sensitive": False,
+        "is_required": False,
+        "is_editable": True,
+        "default_value": "30000",
+        "options": [],
+        "validation": {"min": 2000, "max": 200000},
+        "display_order": 40,
+        "help_key": "settings.disclosure.DISCLOSURE_BODY_CHARS",
+        "examples": ["DISCLOSURE_BODY_CHARS=30000"],
+        "docs": [
+            {
+                "label": "Full guide: regulatory filings",
+                "href": "https://github.com/ZhuLinsen/daily_stock_analysis/blob/main/docs/full-guide_EN.md",
+            },
+        ],
     },
     "LONGBRIDGE_OAUTH_CLIENT_ID": {
         "title": "Longbridge OAuth Client ID",

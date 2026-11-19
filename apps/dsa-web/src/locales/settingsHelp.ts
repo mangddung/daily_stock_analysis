@@ -396,6 +396,30 @@ const settingsHelpZhCN: SettingsHelpMap = {
     usage: '从 https://www.alphavantage.co/support/#api-key 获取，留空表示不启用。',
     impact: ['影响美股日线数据的回退顺序。'],
   },
+  'settings.disclosure.DISCLOSURE_ENABLED': {
+    title: '启用官方公告',
+    summary: '把近期官方公告与预定披露日纳入分析，并在报告“公告”卡片中原样展示。',
+    usage: '开启后从下一次分析生效。预定披露日无需 Key；近期公告：韩股需 OpenDART Key，美股需 SEC User-Agent，A 股无需配置。',
+    impact: ['事件类公告每条额外调用一次 LLM 摘要（每只股票最多 5 条，摘要有缓存），用量记为“公告摘要”。', '数据源失败时右上角运行时告警会显示“公告”项。'],
+  },
+  'settings.disclosure.DART_API_KEY': {
+    title: 'OpenDART API Key',
+    summary: '韩股（.KS/.KQ）近期公告来源。',
+    usage: '在 https://opendart.fss.or.kr 免费申请；留空则跳过韩股近期公告。',
+    impact: ['仅影响韩股近期公告；KIND IR 日程与法定截止日照常展示。'],
+  },
+  'settings.disclosure.SEC_USER_AGENT': {
+    title: 'SEC EDGAR User-Agent',
+    summary: '美股近期公告（SEC EDGAR）请求头。',
+    usage: 'SEC 公平访问政策要求包含联系方式，例如 “AppName contact@example.com”；留空则跳过美股近期公告。',
+    impact: ['仅影响美股近期公告；Yahoo 财报日期照常展示。'],
+  },
+  'settings.disclosure.DISCLOSURE_BODY_CHARS': {
+    title: '公告正文读取上限',
+    summary: '每条事件类公告送入 LLM 摘要的正文字符数，默认 30000。',
+    usage: '包含 SEC 8-K/6-K 的 EX-99 附件（新闻稿、CFO 解读），实际业绩数字通常在附件中。可设 2000–200000。',
+    impact: ['调高可覆盖长公告后部的表格与条款，摘要 token 随之增加（约每 3 个字符 1 个 token）；已缓存的摘要不会因调整而重算。'],
+  },
   'settings.data_source.LONGBRIDGE_OAUTH_CLIENT_ID': {
     title: 'Longbridge OAuth Client ID',
     summary: '配置 Longbridge OpenAPI OAuth 2.0 client_id（推荐方式）。',
@@ -1648,6 +1672,30 @@ const settingsHelpEnUS: SettingsHelpMap = {
     summary: 'Configures the Alpha Vantage key for US daily K-lines.',
     usage: 'Get one at https://www.alphavantage.co/support/#api-key; leave empty to disable.',
     impact: ['Affects the US daily data fallback order.'],
+  },
+  'settings.disclosure.DISCLOSURE_ENABLED': {
+    title: 'Enable disclosures',
+    summary: 'Adds recent official filings and scheduled disclosure dates to the analysis and lists them verbatim in the report’s Disclosures card.',
+    usage: 'Takes effect from the next analysis. Scheduled dates need no key; recent filings need an OpenDART key (KR) or SEC User-Agent (US); A-shares need nothing.',
+    impact: ['Each event filing costs one extra LLM summary call (max 5 per stock, cached), tracked as “Filing summaries”.', 'Source failures show up as a “Disclosures” runtime alert.'],
+  },
+  'settings.disclosure.DART_API_KEY': {
+    title: 'OpenDART API Key',
+    summary: 'Source of recent Korean (.KS/.KQ) filings.',
+    usage: 'Free at https://opendart.fss.or.kr; leave empty to skip recent KR filings.',
+    impact: ['Only affects recent KR filings; KIND IR schedules and statutory deadlines are still shown.'],
+  },
+  'settings.disclosure.SEC_USER_AGENT': {
+    title: 'SEC EDGAR User-Agent',
+    summary: 'Request header for recent US filings (SEC EDGAR).',
+    usage: 'The SEC fair-access policy requires a contact, e.g. “AppName contact@example.com”; leave empty to skip recent US filings.',
+    impact: ['Only affects recent US filings; Yahoo earnings dates are still shown.'],
+  },
+  'settings.disclosure.DISCLOSURE_BODY_CHARS': {
+    title: 'Filing text budget',
+    summary: 'Characters of each event filing sent to the LLM summarizer. Default 30000.',
+    usage: 'Includes SEC 8-K/6-K EX-99 exhibits (press release, CFO commentary), where the actual results usually are. Range 2000–200000.',
+    impact: ['Higher covers tables and terms further into long filings at more summary tokens (about 1 token per 3 chars); already cached summaries are not rebuilt when this changes.'],
   },
   'settings.data_source.LONGBRIDGE_OAUTH_CLIENT_ID': {
     title: 'Longbridge OAuth Client ID',

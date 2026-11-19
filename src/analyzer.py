@@ -1798,6 +1798,10 @@ class AnalysisResult:
     # 资讯池，这些同样进入模型输入却不产生搜索命中。只看计数会把这类分析误报成
     # 「未纳入新闻面证据」。
     news_evidence_present: bool = False
+    # 官方公告（DISCLOSURE_ENABLED）：近期公告 {date,title,summary,source} 与预定披露日 {date,title,source}，
+    # 原样展示在报告中（不经 LLM 改写）；None 表示未启用或旧记录。
+    disclosures: Optional[List[Dict[str, Any]]] = None
+    upcoming_disclosures: Optional[List[Dict[str, Any]]] = None
     data_sources: str = ""  # 数据来源说明
     success: bool = True
     error_message: Optional[str] = None
@@ -1852,6 +1856,8 @@ class AnalysisResult:
             'news_result_count': self.news_result_count,
             'news_result_count_known': self.news_result_count_known,
             'news_evidence_present': self.news_evidence_present,
+            'disclosures': self.disclosures,
+            'upcoming_disclosures': self.upcoming_disclosures,
             'success': self.success,
             'error_message': self.error_message,
             'current_price': self.current_price,
@@ -3926,6 +3932,7 @@ Output strictly in the following JSON format. This is a complete Decision Dashbo
         prompt: str,
         max_tokens: int = 2048,
         temperature: float = 0.7,
+        call_type: str = "market_review",
     ) -> Optional[str]:
         """Public entry point for free-form text generation.
 
@@ -3937,6 +3944,7 @@ Output strictly in the following JSON format. This is a complete Decision Dashbo
             prompt:      Text prompt to send to the LLM.
             max_tokens:  Maximum tokens in the response (default 2048).
             temperature: Sampling temperature (default 0.7).
+            call_type:   Token-usage bucket recorded in llm_usage (default "market_review").
 
         Returns:
             Response text, or None if the LLM call fails (error is logged).
@@ -3949,7 +3957,7 @@ Output strictly in the following JSON format. This is a complete Decision Dashbo
             if isinstance(result, tuple):
                 text, model_used, usage = result
                 if should_persist_usage_telemetry(usage):
-                    persist_llm_usage(usage, model_used, call_type="market_review")
+                    persist_llm_usage(usage, model_used, call_type=call_type)
                 return text
             return result
         except GenerationError:

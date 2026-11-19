@@ -1079,6 +1079,8 @@ class HistoryService:
                 news_evidence_present=persisted_news_evidence_present(
                     raw_result, news_result_count
                 ),
+                disclosures=raw_result.get("disclosures"),
+                upcoming_disclosures=raw_result.get("upcoming_disclosures"),
                 data_sources=raw_result.get("data_sources", ""),
                 success=raw_result.get("success", True),
                 error_message=raw_result.get("error_message"),

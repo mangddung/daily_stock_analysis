@@ -45,6 +45,7 @@ _DATA_TYPE_LABELS = {
     "technical": "技术指标",
     "news": "新闻舆情",
     "news_search": "新闻舆情",
+    "disclosure": "官方公告",
     "fundamental": "基本面",
     "fundamentals": "基本面",
     "belong_boards": "所属板块",
@@ -58,6 +59,7 @@ _DATA_TYPE_TO_BLOCK_KEY = {
     "technical": "technical",
     "news": "news",
     "news_search": "news",
+    "disclosure": "news",  # filings are appended to news_context
     "fundamental": "fundamentals",
     "fundamentals": "fundamentals",
     "belong_boards": "fundamentals",
