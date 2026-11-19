@@ -391,6 +391,9 @@ daily_stock_analysis/
 | `MINIMAX_API_KEYS` | MiniMax Coding Plan Web Search（结构化搜索结果） | 可选 |
 | `SOCIAL_SENTIMENT_API_KEY` | Stock Sentiment API Key（Reddit / X / Polymarket，可选） | 可选 |
 | `SOCIAL_SENTIMENT_API_URL` | Stock Sentiment API 地址（默认 `https://api.adanos.org`） | 可选 |
+| `DISCLOSURE_ENABLED` | 是否把近期官方公告追加到分析提示词的新闻面（默认 `false`）。事件类公告由当前 LLM 摘要一次（每只股票最多 5 条，会额外消耗 LLM 调用），摘要缓存在 `data/cache/disclosures`；定期报告只给标题，A 股公告解析 PDF 正文（H 股表格、扫描件退回标题）。同时追加即将披露的预定日期（无需 Key）：韩股 KIND IR 日程 + 定期报告法定截止日、日股 JPX 決算発表予定日、A 股东方财富预约披露、港股 HKEXnews 董事会会议、美股 yfinance 财报日。也可在 Web 设置 →「官方公告」中开关 | 可选 |
+| `DART_API_KEY` | OpenDART API Key，用于韩股（`.KS`/`.KQ`）公告，免费申请：https://opendart.fss.or.kr | 可选 |
+| `SEC_USER_AGENT` | SEC EDGAR 请求所需 User-Agent（如 `AppName contact@example.com`，SEC 公平访问政策要求），用于美股公告 | 可选 |
 | `SEARXNG_BASE_URLS` | SearXNG 自建实例（无配额兜底，需在 settings.yml 启用 format: json）；留空时仅在显式启用公共实例发现后使用 `searx.space` | 可选 |
 | `SEARXNG_PUBLIC_INSTANCES_ENABLED` | 是否在 `SEARXNG_BASE_URLS` 为空时自动从 `searx.space` 获取公共实例（默认 `false`）。公共实例普遍限流或未开启 JSON 输出，开启后每次分析可能多耗 30~60 秒且新闻面为空 | 可选 |
 | `SEARXNG_TIMEOUT_SECONDS` | 自建 SearXNG 单次搜索超时（秒，默认 `10`，最小 `1`）；实例较慢（如聚合引擎较多的 NAS 部署）时可调大，公共实例超时不受影响。GitHub Actions 需显式映射该变量 | 可选 |
@@ -937,7 +940,7 @@ docker run -e SCHEDULE_ENABLED=true -e SCHEDULE_RUN_IMMEDIATELY=false ...
 
 > 兼容说明：如果运行时显式传入 `RUN_IMMEDIATELY`，但没有单独传 `SCHEDULE_RUN_IMMEDIATELY`，内置调度模式会继续继承前者，避免被 `.env` 中持久化的 `SCHEDULE_RUN_IMMEDIATELY` 旧值反向覆盖。
 
-> 兼容说明（Issue #1815）：`MARKET_REVIEW_REGION=cn|hk|us|jp|kr|tw|both` 仅扩展大盘复盘输入集合；JP/KR/TW 仅供复盘上下文消费，不会放开 Market Light 告警。台股复盘复用既有加权/柜买指数与新闻检索；指数缺失会在报告和分享图片中明确披露；图片保留所有“数据边界”章节的限制项，历史报告和组合市场也适用。不提供市场宽度、三大法人资金流、成交额汇总或板块排行。`both` 现在包含台股，会增加请求次数和耗时；保留旧五市场请设为 `cn,hk,us,jp,kr`。历史配置不会自动改写，默认仍为 `cn`。
+> 兼容说明（Issue #1815）：`MARKET_REVIEW_REGION=cn|hk|us|jp|kr|tw|both` 仅扩展大盘复盘输入集合；JP/KR/TW 仅供复盘上下文消费，不会放开 Market Light 告警。台股复盘复用既有加权/柜买指数与新闻检索；指数缺失会在报告和分享图片中明确披露；图片保留所有“数据边界”章节的限制项，历史报告和组合市场也适用。不提供市场宽度、三大法人资金流或成交额汇总；行业排行来自 TWSE OpenAPI 类股指数（前一交易日）。`both` 现在包含台股，会增加请求次数和耗时；保留旧五市场请设为 `cn,hk,us,jp,kr`。历史配置不会自动改写，默认仍为 `cn`。
 > - `src/config.py`、`src/core/config_registry.py`、`src/services/system_config_service.py` 的改动仅是配置语义扩展，不改 `provider`/`model`/`base_url` 的运行时路由，也不触发 provider/model/base URL 迁移或清理逻辑。
 > - 本轮实际受控配置项：`MARKET_REVIEW_REGION`、`MARKET_REVIEW_COLOR_SCHEME`；`LITELLM_MODEL`、`AGENT_LITELLM_MODEL`、`LITELLM_FALLBACK_MODELS`、`VISION_MODEL`、`OPENAI_BASE_URL` 等旧值保持原子 upsert 语义，不会在更新其他字段时被静默清空或覆盖。
 > - 可核验证据摘要：官方 provider / Base URL / 模型命名来源沿用 [LLM 配置指南](LLM_CONFIG_GUIDE.md#常用官方文档来源用于核对预设-provider--base-url--模型命名)，当前运行时依赖窗口沿用 `requirements.txt` 中的 `litellm>=1.80.10,!=1.82.7,!=1.82.8,<1.99.0`；本轮不新增配置迁移脚本或清理分支，保存/导入仍只写本次提交键。`tests/test_system_config_service.py::SystemConfigServiceTestCase::test_update_market_review_region_does_not_trigger_runtime_model_cleanup` 覆盖只保存 `MARKET_REVIEW_REGION` 时不清空或改写 `LITELLM_CONFIG`、`LLM_CHANNELS`、`LLM_OPENAI_*`、`LITELLM_MODEL`、`AGENT_LITELLM_MODEL`、`LITELLM_FALLBACK_MODELS`、`VISION_MODEL`、`OPENAI_*` 等旧配置。

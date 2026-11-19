@@ -129,6 +129,22 @@ python3 scripts/generate_index_from_csv.py --test  # 先测试
 python3 scripts/generate_index_from_csv.py         # 确认后生成
 ```
 
+韩股种子 `scripts/stock_index_seeds/stock_list_kr.csv` 可从韩国交易所 KIND 上市公司列表重建（KOSPI→`.KS`、KOSDAQ→`.KQ`，显示名为韩文；配置 `DART_API_KEY` 时补充 OpenDART 英文名；旧种子中的名称与别名会保留为别名）。非 6 位数字代码（如 `0220W0`）、KONEX、优先股和 ETF 不在列表内。只替换索引中的韩股行、不需要 Tushare CSV：
+
+```bash
+python3 scripts/fetch_kr_stock_list.py --test     # 先测试
+python3 scripts/fetch_kr_stock_list.py            # 写入种子
+python3 scripts/generate_index_from_csv.py --seed-market KR
+```
+
+日股种子 `scripts/stock_index_seeds/stock_list_jp.csv` 可从 JPX「東証上場銘柄一覧」（日文版 `data_j.xlsx` 与英文版 `data_e.xlsx`，每月更新）重建：显示名为 JPX 官方日文简称，`enname` 为 JPX 官方英文名并加入别名；只保留 Prime/Standard/Growth 股票，ETF/ETN、REIT、PRO Market 和非 4 位数字代码（如 `130A`）不在列表内。
+
+```bash
+python3 scripts/fetch_jp_stock_list.py --test     # 先测试
+python3 scripts/fetch_jp_stock_list.py            # 写入种子
+python3 scripts/generate_index_from_csv.py --seed-market JP
+```
+
 ### 本地客户端自动获取最新索引
 
 新版客户端默认会从项目 GitHub `main` 分支读取最新的 `apps/dsa-web/public/stocks.index.json`，并缓存到本地 `data/cache/stocks.index.json`。前端仍访问本地 `/stocks.index.json`，不需要直接跨域请求 GitHub。
@@ -139,7 +155,7 @@ python3 scripts/generate_index_from_csv.py         # 确认后生成
 STOCK_INDEX_REMOTE_UPDATE_ENABLED=true
 ```
 
-默认开启时，系统最多每 48 小时检查一次更新。若运行环境无法访问 GitHub raw、请求超时、返回内容不是合法股票索引，应用会保留已有缓存；如果没有远程缓存，则继续使用随应用打包的内置索引。远程更新失败不会阻断 WebUI 启动、股票自动补全或分析流程；连续失败达到系统内置阈值后，会在本进程内暂停重试直到下一轮 48 小时窗口。
+`.env.example` 模板中该项为 `false`（只使用本地索引）；未设置该变量时程序默认值仍为开启。开启时，系统最多每 48 小时检查一次更新。若运行环境无法访问 GitHub raw、请求超时、返回内容不是合法股票索引，应用会保留已有缓存；如果没有远程缓存，则继续使用随应用打包的内置索引。远程更新失败不会阻断 WebUI 启动、股票自动补全或分析流程；连续失败达到系统内置阈值后，会在本进程内暂停重试直到下一轮 48 小时窗口。
 
 ## 注意事项
 

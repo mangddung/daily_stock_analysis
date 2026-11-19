@@ -10,6 +10,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 <!-- 新条目格式：- [类型] 描述（类型取值：新功能/改进/修复/文档/测试/chore）-->
+- [改进] 用量页“最近调用”按对话分组：`llm_usage` 新增 `request_id` 列（SQLite 启动时自动补列），同一次 Agent 问答的多步调用合并为一行、可展开查看每次调用；新增 `GET /api/v1/usage/calls`（按组分页，默认每页 50 组），Web 改为分页显示。旧记录无 `request_id`，仍逐条显示。
+- [新功能] 可选的官方公告情报（`DISCLOSURE_ENABLED`）：韩股 OpenDART、美股 SEC EDGAR、A 股 cninfo 的近期公告追加到分析新闻面，事件类公告由 LLM 摘要并本地缓存。
+- [新功能] 公告情报追加“即将披露”日程（同受 `DISCLOSURE_ENABLED` 控制，无需额外 Key）：韩股 KIND IR 日程 + 定期报告法定截止日（按 12 月决算推算），日股 JPX 決算発表予定日，A 股东方财富预约披露时间，港股 HKEXnews 董事会会议通知，美股 yfinance 财报日期；提示词要求报告注明最近的预定日期。全市场日程表缓存 12 小时。
+- [改进] Web 顶栏运行时告警新增“公告”类：公告数据源（OpenDART、SEC EDGAR、cninfo、KIND、JPX、HKEXnews、东方财富、Yahoo Finance）请求失败、OpenDART 配额超限，或全市场日程表解析为 0 行（页面结构变化）时显示告警，该数据源下次成功后自动清除；解析失败时继续使用旧缓存。
+- [新功能] 分析结果新增 `disclosures`（近期公告：日期/标题/摘要/来源）与 `upcoming_disclosures`（预定披露日）字段，随 `raw_result` 持久化（无需迁移）；Web 报告新增“公告”卡片，Markdown 日报/仪表盘/单股报告与模板同步原样列出，不依赖 LLM 是否提及。
+- [修复] 预定披露日（韩股始终包含法定截止日）不再被计为新闻面证据，避免新闻与公告均为零时“未纳入新闻证据”提示被吞掉。
+- [改进] 公告数据源调用（OpenDART、SEC EDGAR、cninfo、KIND、JPX、HKEXnews、东方财富、Yahoo Finance）记录为 `disclosure` 类 provider run，运行流程中显示为“官方公告”节点（含缓存命中、条数与耗时）；运行时告警改由同一记录驱动。
+- [改进] 公告摘要读取正文上限由 6000 字符提高到 30000（`DISCLOSURE_BODY_CHARS`，Web 设置可调），PDF 页数上限 10→100 页；SEC 8-K/6-K 额外读取 EX-99.x 附件（新闻稿、CFO 解读），业绩数字不再缺失；8-K 标题附带 Items（如 `Items 2.02, 9.01`）；业绩类公告（韩股 영업(잠정)실적、A 股业绩预告/快报、8-K Item 2.02）优先进入每只股票 5 条的上限。旧摘要缓存会在下次分析时按新规则重建一次。
+- [新功能] 定期报告（사업/반기/분기보고서、年报/半年报/季报、10-K/10-Q/20-F）不再只给标题：不论新闻时效窗口，始终纳入最近 150 天内最新的一份，并按文档自身结构抽取标准章节后摘要——DART 用 SECTION/TITLE 标签（요약재무정보、매출 및 수주상황、사업의 개요等），cninfo PDF 用书签映射的真实页码（主要会计数据和财务指标、管理层讨论与分析），SEC 取 MD&A（10-K Item 7 / 10-Q Item 2 / 20-F Item 5）；正文不超过读取上限的短报告整篇读取，“本项不适用”类空章节自动跳过。每只股票最多多一次摘要调用（有缓存）。公告摘要输出上限由 400 提高到 4096 tokens（中日韩文定期报告摘要超过 2k tokens 时原先被截断为空）。
+- [改进] 公告摘要按报告语言（`REPORT_LANGUAGE`：中文/英文/韩文）输出，摘要缓存按语言分开；摘要调用失败或返回空时重试 1 次（共 2 次）。
+- [改进] 大盘复盘的行业/概念板块名（如 A 股 `建筑安装业`、TOPIX-17 `食品`、美股 `Technology`）按报告语言显示译名，如 `食品 (1617)` → `식품 (1617)`；译名由 LLM 批量翻译一次并永久缓存于 `data/cache/label_translations.json`（用量记为 `label_translation`），翻译失败时保持原名。
+- [新功能] Web 设置新增“官方公告”分类：可直接开关 `DISCLOSURE_ENABLED`（默认关闭）并配置 `DART_API_KEY`、`SEC_USER_AGENT`，保存后从下一次分析生效。
+- [修复] 公告摘要的 LLM 用量此前记为 `market_review`，现单独记为 `disclosure_summary`，用量页显示为“公告摘要”。
+- [改进] 韩股/日股自动补全扩展：韩股为 KIND 上市公司全量列表（KOSPI/KOSDAQ 约 2,590 只），显示名改为韩文、原中文名保留为别名；日股扩展为 JPX 东证上市股票全量（Prime/Standard/Growth 约 3,505 只），显示名为 JPX 官方日文名、官方英文名作为别名；新增 `scripts/fetch_kr_stock_list.py`、`scripts/fetch_jp_stock_list.py` 与 `generate_index_from_csv.py --seed-market {KR,JP}`。`.env.example` 中 `STOCK_INDEX_REMOTE_UPDATE_ENABLED` 改为 `false`。
+- [新功能] 股票自动补全索引新增可选第 11 个字段 `nameEn`（官方英文名，来自 JPX / OpenDART / Tushare `enname`，不做翻译）；英文界面优先显示官方英文名，中文/韩文界面仍显示上市地官方名称，`nameEn` 也参与搜索。旧的 10 字段索引仍兼容。
+- [修复] 韩股/日股分析提示词的狙击点位不再强制“精确到分/两位小数”：韩股要求韩元取整并按 KRX 最小报价单位取整，日股要求日元取整；提示词中的收盘价、均线、现价也按该单位取整，避免 LLM 输出 `1,152,200.00원` 这类带小数或不在报价单位上的价格。
+- [修复] 分析进行中的运行流程（SSE `task_progress` 携带的 `flow_event`）现按界面语言本地化，与历史 `/flow` 快照一致；此前英文/韩文界面下实时节点标题与消息仍为中文。
+- [修复] `index.css` 中未分层的 `button, input, select, textarea { font: inherit }` 覆盖了所有控件的字号/字重工具类（统一显示为 16px），现移入 `@layer base`；运行流程“展开”等小按钮恢复设计字号。
+- [修复] 任务 SSE 流断开后按 1s→30s 指数退避重连，并在 45s 无任何事件（含心跳）时判定连接已失效并重连，修复开发代理在后端重启后保持空连接导致不再重试的问题；开发环境 Vite 代理在上游响应中断时同步断开浏览器连接，重连可立即开始。
+- [改进] 侧边栏 DSA 标志可点击返回首页。
+- [改进] 报告页股票现价增加千位分隔符，韩股/日股按整数（韩元/日元）显示，其余市场保留两位小数。
+- [修复] 用量统计中同一模型不再因调用路径分成两组：问股（Agent）此前记录 LiteLLM 路由名（如 `anthropic/claude-haiku-5-5`），现与分析/大盘复盘一致记录模型名，路由前缀写入 provider；启动时一次性规范化已有记录。
+- [改进] 大盘复盘“结构化市场数据”指数涨跌幅与行业/概念涨跌榜按正负着色（与个股报告现价同色），指数上涨显示 `+` 号。
+- [新功能] 美股/港股/日股/韩股/台股大盘复盘新增行业涨跌榜：美股 SPDR 行业 ETF、日股 NEXT FUNDS TOPIX-17 ETF、韩股 TIGER 200 行业 ETF、港股恒生四大分类指数（yfinance），台股 TWSE OpenAPI 类股指数；取不到数据时提示词与报告不展示行业章节。概念/题材榜仍仅 A 股。
 - [新功能] 数据中心可直接在弹窗中配置未配置的 Provider，并按当前大盘复盘市场高亮各 Provider 支持的市场；首页复盘市场选择器显示服务器默认市场。Finnhub、Alpha Vantage、Longbridge 凭据现可在 Web 设置中配置。
 - [修复] 问股页面英文界面下仍显示中文的问题，补齐会话侧栏、输入区、导出与错误提示的中英文文案。
 
