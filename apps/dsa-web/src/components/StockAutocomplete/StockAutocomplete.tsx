@@ -137,6 +137,7 @@ function StockAutocompleteInner({
 
   const inputRef = useRef<HTMLInputElement>(null);
   const prevValueRef = useRef(value);
+  const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [dropdownStyle, setDropdownStyle] = useState<{ top: number; left: number; width: string } | null>(null);
 
   const updateDropdownPosition = () => {
@@ -239,7 +240,20 @@ function StockAutocompleteInner({
 
   // Delay closing on blur (avoid immediate close when clicking suggestion items)
   const handleBlur = () => {
-    setTimeout(() => closeSuggestions(), 200);
+    blurTimerRef.current = setTimeout(() => closeSuggestions(), 200);
+  };
+
+  // Re-show suggestions for the existing input when the box regains focus
+  const handleFocus = () => {
+    if (blurTimerRef.current) {
+      clearTimeout(blurTimerRef.current);
+      blurTimerRef.current = null;
+    }
+    if (isOpen) {
+      updateDropdownPosition();
+    } else if (value) {
+      setQuery(value);
+    }
   };
 
   // Fallback mode: use normal input
@@ -267,11 +281,7 @@ function StockAutocompleteInner({
         onKeyDown={handleKeyDown}
         onCompositionStart={handleCompositionStart}
         onCompositionEnd={handleCompositionEnd}
-        onFocus={() => {
-          if (isOpen) {
-            updateDropdownPosition();
-          }
-        }}
+        onFocus={handleFocus}
         onBlur={handleBlur}
         placeholder={placeholder}
         aria-label={ariaLabel}
