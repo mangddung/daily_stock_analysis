@@ -236,6 +236,18 @@ export default defineConfig({
       '/api': {
         target: process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:8000',
         changeOrigin: true,
+        // When the backend restarts mid-response (SSE task stream, chat stream), the proxy
+        // pipes nothing more but never ends the browser response, so clients hang silently.
+        // Destroy the browser side as soon as the upstream response dies incomplete.
+        configure: (proxy) => {
+          proxy.on('proxyRes', (proxyRes, _req, res) => {
+            proxyRes.on('close', () => {
+              if (!proxyRes.complete && !res.writableEnded) {
+                res.destroy()
+              }
+            })
+          })
+        },
       },
     },
   },

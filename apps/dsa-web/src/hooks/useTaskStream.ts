@@ -54,7 +54,7 @@ export interface UseTaskStreamOptions {
   onError?: (error: Event) => void;
   /** Whether to reconnect automatically */
   autoReconnect?: boolean;
-  /** Reconnect delay in milliseconds */
+  /** Initial reconnect delay in milliseconds; doubles per failed attempt up to 30s */
   reconnectDelay?: number;
   /** Whether the hook is enabled */
   enabled?: boolean;
@@ -97,8 +97,25 @@ type TaskStreamSubscriber = {
   reconnectDelay: number;
 };
 
+const MAX_RECONNECT_DELAY_MS = 30_000;
+// The server sends a heartbeat every 30s. Silence past this means the stream is dead
+// without an error event (e.g. the dev proxy keeps the response open after a backend restart).
+const STALE_STREAM_MS = 45_000;
+const STREAM_EVENT_TYPES: SSEEventType[] = [
+  'connected',
+  'task_created',
+  'task_started',
+  'task_progress',
+  'task_completed',
+  'task_failed',
+  'task_cancelled',
+  'heartbeat',
+];
+
 let sharedEventSource: EventSource | null = null;
 let sharedReconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+let sharedStaleTimeout: ReturnType<typeof setTimeout> | null = null;
+let sharedReconnectAttempts = 0;
 let sharedConnected = false;
 // UI language sent to the backend on the shared stream (EventSource cannot send headers).
 let sharedLanguage: UiLanguage = getActiveUiLanguage();
@@ -167,8 +184,17 @@ const clearSharedReconnect = () => {
   }
 };
 
+const clearSharedStale = () => {
+  if (sharedStaleTimeout) {
+    clearTimeout(sharedStaleTimeout);
+    sharedStaleTimeout = null;
+  }
+};
+
 const closeSharedConnection = () => {
   clearSharedReconnect();
+  clearSharedStale();
+  sharedReconnectAttempts = 0;
   if (sharedEventSource) {
     sharedEventSource.close();
     sharedEventSource = null;
@@ -186,7 +212,11 @@ const scheduleSharedReconnect = () => {
   if (reconnectDelays.length === 0) {
     return;
   }
-  const reconnectDelay = Math.min(...reconnectDelays);
+  const reconnectDelay = Math.min(
+    Math.min(...reconnectDelays) * 2 ** sharedReconnectAttempts,
+    MAX_RECONNECT_DELAY_MS,
+  );
+  sharedReconnectAttempts += 1;
   sharedReconnectTimeout = setTimeout(() => {
     sharedReconnectTimeout = null;
     connectSharedStream();
@@ -207,7 +237,33 @@ function connectSharedStream() {
   const eventSource = new window.EventSource(url, { withCredentials: true });
   sharedEventSource = eventSource;
 
+  const handleStreamError = (error: Event) => {
+    clearSharedStale();
+    notifyConnectionState(false);
+    forEachSubscriber((callbacks) => callbacks.onError?.(error));
+    if (sharedEventSource === eventSource) {
+      eventSource.close();
+      sharedEventSource = null;
+    }
+    scheduleSharedReconnect();
+  };
+
+  // Any event, heartbeat included, proves the stream is alive.
+  const armStaleTimer = () => {
+    if (sharedEventSource !== eventSource) {
+      return;
+    }
+    clearSharedStale();
+    sharedStaleTimeout = setTimeout(() => {
+      sharedStaleTimeout = null;
+      handleStreamError(new Event('error'));
+    }, STALE_STREAM_MS);
+  };
+  armStaleTimer();
+  STREAM_EVENT_TYPES.forEach((type) => eventSource.addEventListener(type, armStaleTimer));
+
   eventSource.addEventListener('connected', () => {
+    sharedReconnectAttempts = 0;
     notifyConnectionState(true);
     forEachSubscriber((callbacks) => callbacks.onConnected?.());
   });
@@ -259,19 +315,7 @@ function connectSharedStream() {
     }
   });
 
-  eventSource.addEventListener('heartbeat', () => {
-    // Optional place to record the latest heartbeat timestamp.
-  });
-
-  eventSource.onerror = (error) => {
-    notifyConnectionState(false);
-    forEachSubscriber((callbacks) => callbacks.onError?.(error));
-    if (sharedEventSource === eventSource) {
-      eventSource.close();
-      sharedEventSource = null;
-    }
-    scheduleSharedReconnect();
-  };
+  eventSource.onerror = handleStreamError;
 }
 
 const reconnectSharedStream = () => {
@@ -294,7 +338,7 @@ export function useTaskStream(options: UseTaskStreamOptions = {}): UseTaskStream
     onConnected,
     onError,
     autoReconnect = true,
-    reconnectDelay = 3000,
+    reconnectDelay = 1000,
     enabled = true,
   } = options;
 

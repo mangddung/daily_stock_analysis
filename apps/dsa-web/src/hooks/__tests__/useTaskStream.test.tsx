@@ -34,7 +34,13 @@ describe('useTaskStream', () => {
       const instance: MockEventSourceInstance = {
         listeners: {},
         addEventListener: vi.fn((type: string, listener: (event: MessageEvent<string>) => void) => {
-          instance.listeners[type] = listener;
+          const previous = instance.listeners[type];
+          instance.listeners[type] = previous
+            ? (event) => {
+                previous(event);
+                listener(event);
+              }
+            : listener;
         }),
         close: vi.fn(),
         onerror: null,
@@ -230,10 +236,77 @@ describe('useTaskStream', () => {
     expect(secondError).toHaveBeenCalledTimes(1);
     expect(eventSourceInstances[0].close).toHaveBeenCalledTimes(1);
 
-    await vi.advanceTimersByTimeAsync(3000);
+    await vi.advanceTimersByTimeAsync(1000);
 
     expect(eventSourceInstances).toHaveLength(2);
     expect(getTaskStreamUrl).toHaveBeenCalledTimes(2);
+  });
+
+  it('backs off exponentially between failed reconnects and resets after connecting', async () => {
+    vi.useFakeTimers();
+    renderHook(() => useTaskStream({ enabled: true }));
+    await vi.runOnlyPendingTimersAsync();
+
+    eventSourceInstances[0].onerror?.(new Event('error'));
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(eventSourceInstances).toHaveLength(2);
+
+    eventSourceInstances[1].onerror?.(new Event('error'));
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(eventSourceInstances).toHaveLength(2);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(eventSourceInstances).toHaveLength(3);
+
+    act(() => eventSourceInstances[2].listeners.connected?.(new MessageEvent('connected')));
+    act(() => eventSourceInstances[2].onerror?.(new Event('error')));
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(eventSourceInstances).toHaveLength(4);
+  });
+
+  it('caps the reconnect delay at 30 seconds', async () => {
+    vi.useFakeTimers();
+    renderHook(() => useTaskStream({ enabled: true, reconnectDelay: 20_000 }));
+    await vi.runOnlyPendingTimersAsync();
+
+    eventSourceInstances[0].onerror?.(new Event('error'));
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(eventSourceInstances).toHaveLength(2);
+
+    eventSourceInstances[1].onerror?.(new Event('error'));
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(eventSourceInstances).toHaveLength(3);
+  });
+
+  it('reconnects when the stream goes silent past the heartbeat window', async () => {
+    vi.useFakeTimers();
+    const onError = vi.fn();
+    renderHook(() => useTaskStream({ enabled: true, onError }));
+    await vi.runOnlyPendingTimersAsync();
+    act(() => eventSourceInstances[0].listeners.connected?.(new MessageEvent('connected')));
+
+    await vi.advanceTimersByTimeAsync(40_000);
+    eventSourceInstances[0].listeners.heartbeat?.(new MessageEvent('heartbeat'));
+    await vi.advanceTimersByTimeAsync(40_000);
+    expect(eventSourceInstances[0].close).not.toHaveBeenCalled();
+
+    await act(() => vi.advanceTimersByTimeAsync(5_000));
+    expect(eventSourceInstances[0].close).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(eventSourceInstances).toHaveLength(2);
+  });
+
+  it('does not reconnect after the hook unmounts', async () => {
+    vi.useFakeTimers();
+    const { unmount } = renderHook(() => useTaskStream({ enabled: true }));
+    await vi.runOnlyPendingTimersAsync();
+
+    eventSourceInstances[0].onerror?.(new Event('error'));
+    unmount();
+    await vi.advanceTimersByTimeAsync(120_000);
+
+    expect(eventSourceInstances).toHaveLength(1);
   });
 
   it('reopens the shared stream with the new UI language when it changes', async () => {
