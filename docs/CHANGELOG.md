@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 <!-- 新条目格式：- [类型] 描述（类型取值：新功能/改进/修复/文档/测试/chore）-->
+- [修复] 涨跌颜色设置 `MARKET_REVIEW_COLOR_SCHEME` 现统一作用于 Web 界面（个股报告、大盘复盘、历史走势、行情看板、持仓盈亏、回测收益）与个股分享图片；此前 Web 固定为红涨绿/青跌或绿涨红跌混用，个股分享图片按股票市场推断颜色。默认值仍为 `green_up`，原本看到红涨的 Web 用户需在设置中选 `red_up`。
 - [改进] 用量页“最近调用”按对话分组：`llm_usage` 新增 `request_id` 列（SQLite 启动时自动补列），同一次 Agent 问答的多步调用合并为一行、可展开查看每次调用；新增 `GET /api/v1/usage/calls`（按组分页，默认每页 50 组），Web 改为分页显示。旧记录无 `request_id`，仍逐条显示。
 - [新功能] 可选的官方公告情报（`DISCLOSURE_ENABLED`）：韩股 OpenDART、美股 SEC EDGAR、A 股 cninfo 的近期公告追加到分析新闻面，事件类公告由 LLM 摘要并本地缓存。
 - [新功能] 公告情报追加“即将披露”日程（同受 `DISCLOSURE_ENABLED` 控制，无需额外 Key）：韩股 KIND IR 日程 + 定期报告法定截止日（按 12 月决算推算），日股 JPX 決算発表予定日，A 股东方财富预约披露时间，港股 HKEXnews 董事会会议通知，美股 yfinance 财报日期；提示词要求报告注明最近的预定日期。全市场日程表缓存 12 小时。

@@ -3912,8 +3912,8 @@ _FIELD_DEFINITIONS: Dict[str, Dict[str, Any]] = {
         "warning_codes": [],
     },
     "MARKET_REVIEW_COLOR_SCHEME": {
-        "title": "Market Review Color Scheme",
-        "description": "Index change color style in market-review tables: green_up (green for gains, red for losses) or red_up (red for gains, green for losses).",
+        "title": "Up/Down Color Scheme",
+        "description": "Gain/loss color style across market reviews, stock reports, share images and the Web UI: green_up (green for gains, red for losses) or red_up (red for gains, green for losses).",
         "category": "system",
         "data_type": "string",
         "ui_control": "select",
