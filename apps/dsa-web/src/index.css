@@ -195,8 +195,8 @@
   --home-accent-text: hsl(var(--primary));
   --home-secondary-accent-text: hsl(247 84% 66%);
   --home-title-accent: hsl(247 84% 66%);
-  --home-price-up: hsl(0 88% 62%);
-  --home-price-down: hsl(149 100% 42%);
+  --home-price-red: hsl(0 88% 62%);
+  --home-price-green: hsl(149 100% 42%);
   --home-strategy-buy: hsl(149 100% 42%);
   --home-strategy-secondary: hsl(var(--primary));
   --home-strategy-stop: hsl(346 100% 63%);
@@ -470,8 +470,8 @@
   --home-accent-text: hsl(var(--primary));
   --home-secondary-accent-text: hsl(247 84% 72%);
   --home-title-accent: hsl(247 84% 72%);
-  --home-price-up: hsl(0 88% 64%);
-  --home-price-down: hsl(149 100% 44%);
+  --home-price-red: hsl(0 88% 64%);
+  --home-price-green: hsl(149 100% 44%);
   --home-strategy-buy: hsl(149 100% 44%);
   --home-strategy-secondary: hsl(var(--primary));
   --home-strategy-stop: hsl(346 100% 66%);
@@ -602,6 +602,17 @@
   --login-input-toggle-active-text: hsl(var(--primary) / 0.96);
   --login-grid-line: hsl(0 0% 50% / 0.04);
   --login-grid-mask: radial-gradient(ellipse 80% 50% at 50% 50%, #000 70%, transparent 100%);
+}
+
+/* Up/down price colors follow MARKET_REVIEW_COLOR_SCHEME (green_up by default). */
+:root {
+  --home-price-up: var(--home-price-green);
+  --home-price-down: var(--home-price-red);
+}
+
+:root[data-price-colors="red_up"] {
+  --home-price-up: var(--home-price-red);
+  --home-price-down: var(--home-price-green);
 }
 
 /* =========================================

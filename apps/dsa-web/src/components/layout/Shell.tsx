@@ -10,6 +10,8 @@ import { cn } from '../../utils/cn';
 import { ThemeToggle } from '../theme/ThemeToggle';
 import { UiLanguageToggle } from '../i18n/UiLanguageToggle';
 import { useUiLanguage } from '../../contexts/UiLanguageContext';
+import { systemConfigApi } from '../../api/systemConfig';
+import { applyPriceColorScheme } from '../../utils/priceColorScheme';
 
 type ShellProps = {
   children?: React.ReactNode;
@@ -19,6 +21,13 @@ export const Shell: React.FC<ShellProps> = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const collapsed = false;
   const { t } = useUiLanguage();
+
+  useEffect(() => {
+    systemConfigApi
+      .getConfig(false)
+      .then((config) => applyPriceColorScheme(config.items))
+      .catch(() => undefined); // Keep the cached/default scheme if config is unreachable.
+  }, []);
 
   useEffect(() => {
     if (!mobileOpen) {

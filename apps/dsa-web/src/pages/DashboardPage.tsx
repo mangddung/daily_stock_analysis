@@ -74,10 +74,10 @@ function formatPercent(value: number | null | undefined): string {
   return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
 }
 
-// Korean convention: up is red, down is blue.
+// Follows MARKET_REVIEW_COLOR_SCHEME via --home-price-up/down.
 function changeClass(value: number | null | undefined): string {
   if (!value) return 'text-secondary-text';
-  return value > 0 ? 'text-danger' : 'text-cyan';
+  return value > 0 ? 'text-[var(--home-price-up)]' : 'text-[var(--home-price-down)]';
 }
 
 function formatAge(asOf: number | null | undefined, nowSec: number, language: UiLanguage, t: Translate): string {

@@ -8,6 +8,7 @@ import type {
   SystemConfigUpdateItem,
 } from '../types/systemConfig';
 import { serializeStockListValue } from '../utils/stockList';
+import { applyPriceColorScheme } from '../utils/priceColorScheme';
 import { useUiLanguage } from '../contexts/UiLanguageContext';
 import { llmChannelText } from '../locales/llmChannels';
 
@@ -185,6 +186,7 @@ export function useSystemConfig() {
       options?: { preserveDirty?: boolean; committedKeys?: string[] },
     ) => {
       const sorted = sortItemsByOrder(items);
+      applyPriceColorScheme(sorted);
       const previousServerMap = serverItemByKeyRef.current;
       const committedKeys = new Set(options?.committedKeys ?? []);
       const preserveDirty = options?.preserveDirty ?? false;
