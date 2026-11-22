@@ -1184,7 +1184,7 @@ def _stock_data_from_payload(
     if not turnover:
         turnover = _clean_value(persisted_snapshot.get("turnover_rate"), limit=18)
     turnover = turnover or _metric_value(poster.snapshot, "换手", "换手率")
-    positive_tone = _stock_positive_tone(poster.code)
+    positive_tone = _stock_positive_tone()
     negative_tone = _opposite_color(positive_tone)
     poster.snapshot = [
         item for item in (
@@ -1779,14 +1779,15 @@ def _tone_for_trend(trend: str) -> str:
     return "primary"
 
 
-def _stock_positive_tone(code: str) -> str:
-    normalized = (code or "").strip().upper()
-    red_up_market = bool(
-        re.fullmatch(r"\d{6}", normalized)
-        or re.match(r"^(?:SH|SZ|BJ|HK)\d+", normalized)
-        or re.search(r"\.(?:SH|SS|SZ|BJ|HK|T|TW|TWO|KS|KQ)$", normalized)
-    )
-    return "red" if red_up_market else "green"
+def _stock_positive_tone() -> str:
+    """Gain color for stock posters, following MARKET_REVIEW_COLOR_SCHEME."""
+    try:
+        from src.config import get_config
+
+        scheme = getattr(get_config(), "market_review_color_scheme", "green_up")
+    except Exception:
+        scheme = "green_up"
+    return "red" if scheme == "red_up" else "green"
 
 
 def _metric_cards(

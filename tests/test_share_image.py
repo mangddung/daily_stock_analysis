@@ -179,7 +179,11 @@ def test_stock_share_image_does_not_link_unsafe_social_url():
     assert "javascript:" not in html
 
 
-def test_stock_share_image_prefers_structured_json_and_compacts_trade_points():
+def test_stock_share_image_prefers_structured_json_and_compacts_trade_points(monkeypatch):
+    monkeypatch.setattr(
+        "src.config.get_config",
+        lambda: SimpleNamespace(market_review_color_scheme="red_up"),
+    )
     payload = {
         "name": "中钨高新",
         "code": "000657",
@@ -236,6 +240,17 @@ def test_stock_share_image_prefers_structured_json_and_compacts_trade_points():
     assert 'class="signal-trend negative"' in html
     assert "置信度 中" in html
     assert 'class="metric red"><span>涨跌</span><strong>+2.29%</strong>' in html
+
+    monkeypatch.setattr(
+        "src.config.get_config",
+        lambda: SimpleNamespace(market_review_color_scheme="green_up"),
+    )
+    green_html = build_share_image_html(
+        "# 中钨高新 000657 分析报告\n\n## 核心结论\n\n观望",
+        generated_on=date(2026, 8, 1),
+        structured_payload=payload,
+    )
+    assert 'class="metric green"><span>涨跌</span><strong>+2.29%</strong>' in green_html
     assert "等待企稳" in html
     assert "确认买入" in html
     assert "确认买入</span><strong>55.13" in html
